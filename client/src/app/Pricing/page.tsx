@@ -3,7 +3,6 @@ import { Check } from "lucide-react";
 
 export { faqs, plans } from "@/utils/constant";
 
-
 const page = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -98,3 +97,9 @@ const page = () => {
 };
 
 export default page;
+
+export const metadata = {
+  title: "Pricing - Edikit Motion Graphics Generator",
+  description:
+    "Choose a pricing plan that fits your needs. Generate motion graphics with flexible export limits and high-quality video output.",
+};
