@@ -77,7 +77,7 @@ const CustomizePage = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Link
-          href="/"
+          href="/Templates"
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -335,7 +335,7 @@ const CustomizePage = () => {
                   </li>
                 </ul>
                 <Link
-                  href="/pricing"
+                  href="/Pricing"
                   className="block w-full text-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                 >
                   Upgrade to Pro
