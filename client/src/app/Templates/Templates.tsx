@@ -1,5 +1,6 @@
 import { categories, templates } from "@/utils/constant";
 import { Play, Search } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 const Templates = () => {
@@ -51,10 +52,12 @@ const Templates = () => {
                 <div className="group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10">
                   {/* Thumbnail */}
                   <div className="relative aspect-4/3 overflow-hidden bg-muted">
-                    <img
+                    <Image
                       src={template.thumbnail || "/placeholder.svg"}
                       alt={template.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      width={200}
+                      height={200}
                     />
 
                     {/* Hover Overlay */}
