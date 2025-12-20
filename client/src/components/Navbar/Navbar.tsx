@@ -37,7 +37,6 @@ const Navbar = () => {
           <nav className="hidden md:flex items-center gap-6">
             <NavLink href="/templates">Templates</NavLink>
             <NavLink href="/Pricing">Pricing</NavLink>
-            <NavLink href="/examples">Examples</NavLink>
           </nav>
 
           {/* Right Actions */}
@@ -111,7 +110,7 @@ const NavLink = ({ href, children, onClick }: any) => (
   <Link
     href={href}
     onClick={onClick}
-    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+    className="text-lg text-muted-foreground hover:text-foreground transition-colors"
   >
     {children}
   </Link>

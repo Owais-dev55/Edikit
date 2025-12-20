@@ -1,5 +1,5 @@
 import Link from "next/link"
-
+import { Play } from "lucide-react"
 export default function Hero() {
   return (
     <div className="min-h-screen bg-background">
@@ -35,11 +35,9 @@ export default function Hero() {
               <div className="relative aspect-video rounded-2xl bg-linear-to-br from-primary/20 to-purple-600/20 border-2 border-primary/30 overflow-hidden shadow-2xl">
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
                   <div className="w-20 h-20 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/40 flex items-center justify-center mb-6">
-                    <svg className="w-10 h-10 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
+                <Play className="w-10 h-10 text-primary" />
                   </div>
-                  <h3 className="text-2xl font-bold text-foreground mb-2">Sales pitch video here</h3>
+                  <h2 className="text-2xl font-bold text-foreground mb-2">Sales pitch video here</h2>
                   <p className="text-muted-foreground max-w-md">
                     Watch how easy it is to create professional animations
                   </p>
