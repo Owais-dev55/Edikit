@@ -35,8 +35,8 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <NavLink href="/Templates">Templates</NavLink>
-            <NavLink href="/Pricing">Pricing</NavLink>
+            <NavLink href="/templates">Templates</NavLink>
+            <NavLink href="/pricing">Pricing</NavLink>
           </nav>
 
           {/* Right Actions */}
@@ -75,14 +75,13 @@ const Navbar = () => {
       {isOpen && (
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
-            <NavLink href="/Templates" onClick={() => setIsOpen(false)}>
+            <NavLink href="/templates" onClick={() => setIsOpen(false)}>
               Templates
             </NavLink>
-            <NavLink href="/Pricing" onClick={() => setIsOpen(false)}>
+            <NavLink href="/pricing" onClick={() => setIsOpen(false)}>
               Pricing
             </NavLink>
            
-
             <div className="flex flex-col gap-2 pt-2">
               <Link
                 href="/login"

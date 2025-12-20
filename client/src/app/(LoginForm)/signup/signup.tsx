@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Play, Mail, Lock, User } from "lucide-react";
 import Image from "next/image";
+import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -127,12 +128,12 @@ export default function SignUpPage() {
                   className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
                 >
                   I agree to the{" "}
-                  <Link href="/terms" className="text-primary hover:underline">
+                  <Link href="#" className="text-primary hover:underline">
                     Terms of Service
                   </Link>{" "}
                   and{" "}
                   <Link
-                    href="/privacy"
+                    href="#"
                     className="text-primary hover:underline"
                   >
                     Privacy Policy
@@ -167,7 +168,7 @@ export default function SignUpPage() {
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-                <i className="fa-brands fa-google"></i>
+              <GoogleIcon size={20} />
                 Continue with Google
               </button>
 
@@ -175,7 +176,7 @@ export default function SignUpPage() {
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-                <i className="fa-brands fa-apple text-2xl"></i>
+              <AppleIcon />
                 Continue with Apple
               </button>
             </div>

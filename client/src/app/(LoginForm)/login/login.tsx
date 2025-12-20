@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Play, Mail, Lock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -67,7 +68,7 @@ const Login = () => {
                     Password
                   </label>
                   <Link
-                    href="/forgot-password"
+                    href="#"
                     className="text-xs text-primary hover:underline"
                   >
                     Forgot password?
@@ -115,7 +116,7 @@ const Login = () => {
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-                <i className="fa-brands fa-google"></i>
+              <GoogleIcon size={20} />
                 Continue with Google
               </button>
 
@@ -123,7 +124,7 @@ const Login = () => {
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-              <i className="fa-brands fa-apple text-2xl"></i>
+              <AppleIcon />
                 Continue with Apple
               </button>
             </div>

@@ -17,16 +17,16 @@ export const metadata: Metadata = {
   title: "Edikit : Create Production-Level Motion Graphics in Seconds",
   description:
     "Edikit lets you create viral, production-level motion graphics in seconds. Choose a template, customize it, and generate videos automatically.",
-  icons: {
-    icon: [
-      { url: "/favicon.ico" },
-      { url: "/favicon-16x16.png", sizes: "16x16",  },
-      { url: "/favicon-32x32.png", sizes: "32x32",  },
-      { url: "/favicon-192x192.png", sizes: "192x192",  },
-      {url: "/favicon-512x512.png", sizes: "512x512",  }
-    ] , 
-  apple: '/apple-touch-icon.png',
-  }
+  // icons: {
+  //   icon: [
+  //     { url: "/favicon.ico" },
+  //     { url: "/favicon-16x16.png", sizes: "16x16",  },
+  //     { url: "/favicon-32x32.png", sizes: "32x32",  },
+  //     { url: "/favicon-192x192.png", sizes: "192x192",  },
+  //     {url: "/favicon-512x512.png", sizes: "512x512",  }
+  //   ] , 
+  // apple: '/apple-touch-icon.png',
+  // }
 };
 
 export default function RootLayout({
@@ -36,9 +36,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossOrigin="anonymous" referrerPolicy="no-referrer" />
-    </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
