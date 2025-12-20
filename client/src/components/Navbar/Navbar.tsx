@@ -39,6 +39,7 @@ const Navbar = () => {
             <NavLink href="/pricing">Pricing</NavLink>
           </nav>
 
+
           {/* Right Actions */}
           <div className="flex items-center gap-2 md:gap-3">
             <ToogleTheme />
