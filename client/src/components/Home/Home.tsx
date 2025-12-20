@@ -55,7 +55,7 @@ export default function Hero() {
                 </p>
                 <div className="pt-4">
                   <Link
-                    href="/templates"
+                    href="/Templates"
                     className="inline-block px-6 py-3 text-base font-medium border-2 border-border hover:border-primary bg-background text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     Browse Templates
