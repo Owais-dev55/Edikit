@@ -61,3 +61,59 @@ export const faqs = [
     answer: "You can change your plan at any time. Changes will be prorated on your next billing cycle.",
   },
 ]
+
+export const templates = [
+  {
+    id: 1,
+    title: "Product Launch",
+    category: "Marketing",
+    duration: "15s",
+    thumbnail: "/modern-product-launch-animation-dark-background.jpg",
+  },
+  {
+    id: 2,
+    title: "Social Media Promo",
+    category: "Social",
+    duration: "10s",
+    thumbnail: "/social-media-promotional-video-template-vibrant.jpg",
+  },
+  {
+    id: 3,
+    title: "Logo Reveal",
+    category: "Branding",
+    duration: "8s",
+    thumbnail: "/elegant-logo-reveal-animation.jpg",
+  },
+  {
+    id: 4,
+    title: "Event Invitation",
+    category: "Events",
+    duration: "12s",
+    thumbnail: "/modern-event-invitation-motion-graphics.jpg",
+  },
+  {
+    id: 5,
+    title: "Tech Showcase",
+    category: "Technology",
+    duration: "20s",
+    thumbnail: "/futuristic-tech-product-showcase-animation.jpg",
+  },
+  {
+    id: 6,
+    title: "Testimonial Video",
+    category: "Marketing",
+    duration: "18s",
+    thumbnail: "/customer-testimonial-video-template-clean.jpg",
+  },
+]
+
+export const categories = ["All", "Marketing", "Social", "Branding", "Events", "Technology"]
+export const durations = ["All", "Under 10s", "10s - 20s", "20s - 30s", "30s+"]
+
+export const durationFilters: { [key: string]: (duration: number) => boolean } = {
+  All: () => true,
+  "Under 10s": (duration: number) => duration < 10,
+  "10s - 20s": (duration: number) => duration >= 10 && duration <= 20,
+  "20s - 30s": (duration: number) => duration > 20 && duration <= 30,
+  "30s+": (duration: number) => duration > 30,
+}
