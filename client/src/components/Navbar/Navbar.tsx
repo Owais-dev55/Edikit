@@ -3,12 +3,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { ToogleTheme } from "../Theme/theme-toogle";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { ToogleTheme } from "../Theme/theme-toogle";
 
 const Navbar = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -19,7 +25,6 @@ const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="container mx-auto px-4">
-        {/* Top Bar */}
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
@@ -28,7 +33,7 @@ const Navbar = () => {
               alt="Logo"
               width={160}
               height={40}
-              className="w-40 "
+              className="w-40"
               priority
             />
           </Link>
@@ -103,14 +108,29 @@ const Navbar = () => {
   );
 };
 
-const NavLink = ({ href, children, onClick }: any) => (
-  <Link
-    href={href}
-    onClick={onClick}
-    className="text-lg text-muted-foreground hover:text-foreground transition-colors"
-  >
-    {children}
-  </Link>
-);
-
 export default Navbar;
+
+type NavLinkProps = {
+  href: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+};
+
+const NavLink = ({ href, children, onClick }: NavLinkProps) => {
+  const pathname = usePathname();
+  const isActive = pathname === href || pathname.startsWith(`${href}/`);
+
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`text-lg transition-colors ${
+        isActive
+          ? "font-semibold text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+};
