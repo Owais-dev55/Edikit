@@ -1,4 +1,10 @@
 # Edikit
 
 - client (Frontend)
-- server (Backend)
+
+  - npm
+
+- server (Backend):
+  - pnpm install
+  - pnpm add <pkg>
+  - pnpm run dev
