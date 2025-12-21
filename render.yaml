@@ -3,6 +3,7 @@ services:
     name: edikit-api
     env: node
     buildCommand: pnpm install && pnpm prisma:generate && pnpm build
+    preDeployCommand: pnpm prisma:migrate:deploy
     startCommand: pnpm start
     envVars:
       - key: NODE_ENV
