@@ -3,6 +3,9 @@
 /node_modules
 /build
 
+# Prisma generated client
+/src/generated
+
 # Logs
 logs
 *.log
@@ -11,6 +14,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+agent
 
 # OS
 .DS_Store
