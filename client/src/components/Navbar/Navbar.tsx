@@ -1,20 +1,20 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import Image from 'next/image'
-import { useEffect, useState } from 'react'
-import { ToogleTheme } from '../Theme/theme-toogle'
-import { Menu, X } from 'lucide-react'
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { ToogleTheme } from "../Theme/theme-toogle";
+import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
-  const [isMounted, setIsMounted] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
+  const [isMounted, setIsMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true)
-  }, [])
+    setIsMounted(true);
+  }, []);
 
-  if (!isMounted) return null
+  if (!isMounted) return null;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
@@ -35,10 +35,9 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <NavLink href="/Templates">Templates</NavLink>
-            <NavLink href="/Pricing">Pricing</NavLink>
+            <NavLink href="/templates">Templates</NavLink>
+            <NavLink href="/pricing">Pricing</NavLink>
           </nav>
-
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 md:gap-3">
@@ -76,13 +75,13 @@ const Navbar = () => {
       {isOpen && (
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
-            <NavLink href="/Templates" onClick={() => setIsOpen(false)}>
+            <NavLink href="/templates" onClick={() => setIsOpen(false)}>
               Templates
             </NavLink>
-            <NavLink href="/Pricing" onClick={() => setIsOpen(false)}>
+            <NavLink href="/pricing" onClick={() => setIsOpen(false)}>
               Pricing
             </NavLink>
-           
+
             <div className="flex flex-col gap-2 pt-2">
               <Link
                 href="/login"
@@ -101,8 +100,8 @@ const Navbar = () => {
         </div>
       )}
     </header>
-  )
-}
+  );
+};
 
 const NavLink = ({ href, children, onClick }: any) => (
   <Link
@@ -112,6 +111,6 @@ const NavLink = ({ href, children, onClick }: any) => (
   >
     {children}
   </Link>
-)
+);
 
-export default Navbar
+export default Navbar;

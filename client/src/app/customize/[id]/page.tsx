@@ -73,11 +73,10 @@ const CustomizePage = () => {
   };
 
   return (
-     <div className="min-h-screen bg-background">
-
+    <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">
         <Link
-          href="/Templates"
+          href="/templates"
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -88,49 +87,68 @@ const CustomizePage = () => {
           {/* Left Column - Customization Form */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">{template.title}</h1>
-              <p className="text-muted-foreground">Customize your video template</p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                {template.title}
+              </h1>
+              <p className="text-muted-foreground">
+                Customize your video template
+              </p>
             </div>
 
             <div className="p-6 rounded-lg border border-border bg-card space-y-6">
               {/* Text Inputs */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="headline" className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="headline"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Headline
                   </label>
                   <input
                     id="headline"
                     type="text"
                     value={formData.headline}
-                    onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, headline: e.target.value })
+                    }
                     className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Enter main headline"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="subheadline" className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="subheadline"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Subheadline
                   </label>
                   <input
                     id="subheadline"
                     type="text"
                     value={formData.subheadline}
-                    onChange={(e) => setFormData({ ...formData, subheadline: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, subheadline: e.target.value })
+                    }
                     className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Enter subheadline"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="description" className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="description"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Description
                   </label>
                   <textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                     placeholder="Enter description"
                     rows={3}
@@ -140,9 +158,17 @@ const CustomizePage = () => {
 
               {/* Logo Upload */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Logo</label>
+                <label className="text-sm font-medium text-foreground">
+                  Logo
+                </label>
                 <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    id="logo-upload"
+                  />
                   <label htmlFor="logo-upload" className="cursor-pointer">
                     {logoPreview ? (
                       <div className="space-y-3">
@@ -151,7 +177,9 @@ const CustomizePage = () => {
                           alt="Logo preview"
                           className="w-24 h-24 mx-auto object-contain"
                         />
-                        <p className="text-sm text-muted-foreground">Click to change logo</p>
+                        <p className="text-sm text-muted-foreground">
+                          Click to change logo
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -159,8 +187,12 @@ const CustomizePage = () => {
                           <Upload className="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-foreground">Upload your logo</p>
-                          <p className="text-xs text-muted-foreground">PNG, JPG or SVG (max. 5MB)</p>
+                          <p className="text-sm font-medium text-foreground">
+                            Upload your logo
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            PNG, JPG or SVG (max. 5MB)
+                          </p>
                         </div>
                       </div>
                     )}
@@ -171,7 +203,10 @@ const CustomizePage = () => {
               {/* Color Pickers */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="primaryColor" className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="primaryColor"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Primary Color
                   </label>
                   <div className="flex gap-2">
@@ -179,19 +214,32 @@ const CustomizePage = () => {
                       id="primaryColor"
                       type="color"
                       value={formData.primaryColor}
-                      onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          primaryColor: e.target.value,
+                        })
+                      }
                       className="w-16 h-10 p-1 rounded-lg border border-border cursor-pointer"
                     />
                     <input
                       value={formData.primaryColor}
-                      onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          primaryColor: e.target.value,
+                        })
+                      }
                       className="flex-1 h-10 px-3 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="secondaryColor" className="text-sm font-medium text-foreground">
+                  <label
+                    htmlFor="secondaryColor"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Secondary Color
                   </label>
                   <div className="flex gap-2">
@@ -199,12 +247,22 @@ const CustomizePage = () => {
                       id="secondaryColor"
                       type="color"
                       value={formData.secondaryColor}
-                      onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          secondaryColor: e.target.value,
+                        })
+                      }
                       className="w-16 h-10 p-1 rounded-lg border border-border cursor-pointer"
                     />
                     <input
                       value={formData.secondaryColor}
-                      onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          secondaryColor: e.target.value,
+                        })
+                      }
                       className="flex-1 h-10 px-3 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
@@ -235,7 +293,9 @@ const CustomizePage = () => {
           <div className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
             <div className="p-6 rounded-lg border border-border bg-card">
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-foreground">Preview</h2>
+                <h2 className="text-xl font-semibold text-foreground">
+                  Preview
+                </h2>
 
                 {/* Video Player */}
                 <div className="aspect-video bg-muted rounded-lg overflow-hidden relative border border-border">
@@ -257,13 +317,21 @@ const CustomizePage = () => {
                               />
                             )}
                             <div className="space-y-2">
-                              <h3 className="text-2xl font-bold" style={{ color: formData.primaryColor }}>
+                              <h3
+                                className="text-2xl font-bold"
+                                style={{ color: formData.primaryColor }}
+                              >
                                 {formData.headline}
                               </h3>
-                              <p className="text-lg" style={{ color: formData.secondaryColor }}>
+                              <p
+                                className="text-lg"
+                                style={{ color: formData.secondaryColor }}
+                              >
                                 {formData.subheadline}
                               </p>
-                              <p className="text-sm text-muted-foreground">{formData.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {formData.description}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -276,8 +344,12 @@ const CustomizePage = () => {
                           <Play className="w-10 h-10 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-foreground">No preview yet</p>
-                          <p className="text-xs text-muted-foreground">Generate a preview to see your video</p>
+                          <p className="text-sm font-medium text-foreground">
+                            No preview yet
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Generate a preview to see your video
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -302,15 +374,21 @@ const CustomizePage = () => {
                 <div className="pt-4 border-t border-border space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Duration</span>
-                    <span className="text-foreground font-medium">{template.duration}</span>
+                    <span className="text-foreground font-medium">
+                      {template.duration}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Resolution</span>
-                    <span className="text-foreground font-medium">1920 × 1080</span>
+                    <span className="text-foreground font-medium">
+                      1920 × 1080
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Format</span>
-                    <span className="text-foreground font-medium">MP4, MOV</span>
+                    <span className="text-foreground font-medium">
+                      MP4, MOV
+                    </span>
                   </div>
                 </div>
               </div>
@@ -319,7 +397,9 @@ const CustomizePage = () => {
             {/* Upgrade CTA */}
             <div className="p-6 rounded-lg bg-linear-to-br from-primary/10 to-primary/5 border border-primary/20">
               <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">Unlock Premium Features</h3>
+                <h3 className="font-semibold text-foreground">
+                  Unlock Premium Features
+                </h3>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
@@ -335,7 +415,7 @@ const CustomizePage = () => {
                   </li>
                 </ul>
                 <Link
-                  href="/Pricing"
+                  href="/pricing"
                   className="block w-full text-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                 >
                   Upgrade to Pro
@@ -346,7 +426,7 @@ const CustomizePage = () => {
         </div>
       </main>
     </div>
-  )
+  );
 };
 
 export default CustomizePage;
