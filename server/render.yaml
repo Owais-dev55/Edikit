@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: edikit-api
+    env: node
+    buildCommand: pnpm install && pnpm prisma:generate && pnpm build
+    preDeployCommand: pnpm prisma:migrate:deploy
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_TOKEN_NAME
+        value: user_token
+      - key: FRONTEND_URL
+        sync: false
