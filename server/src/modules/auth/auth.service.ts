@@ -56,14 +56,6 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    const existingFullName = await this.prisma.user.findUnique({
-      where: { fullName: registerDto.fullName },
-    });
-
-    if (existingFullName) {
-      throw new ConflictException('User with this name already exists');
-    }
-
     const hashedPassword = await hash(registerDto.password);
 
     const firstUser = await this.prisma.user.findFirst({
