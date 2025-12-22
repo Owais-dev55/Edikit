@@ -13,7 +13,7 @@ export function setAuthCookie(
   res.cookie(configService.get<string>('JWT_TOKEN_NAME', 'user_token'), token, {
     httpOnly: true,
     secure: configService.get<string>('NODE_ENV') === 'production',
-    sameSite: 'lax',
+    sameSite: 'none',
     maxAge,
   });
 }
@@ -22,6 +22,6 @@ export function clearAuthCookie(res: Response, configService: ConfigService) {
   res.clearCookie(configService.get<string>('JWT_TOKEN_NAME', 'user_token'), {
     httpOnly: true,
     secure: configService.get<string>('NODE_ENV') === 'production',
-    sameSite: 'lax',
+    sameSite: 'none',
   });
 }
