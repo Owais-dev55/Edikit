@@ -3,21 +3,42 @@
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { Play, Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User, LoaderCircle } from "lucide-react";
 import Image from "next/image";
 import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
+import { signupUser } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 
 export default function SignUpPage() {
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
-    name: "",
+    fullName: "",
     email: "",
     password: "",
-    agreeToTerms: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signup attempt:", formData);
+    setLoading(true);
+    try {
+      const response = await signupUser(
+        formData.fullName,
+        formData.email,
+        formData.password
+      );
+      console.log(response);
+      showSuccessToast("Signup successful", "Your account has been created." );
+      router.push("/login");
+      console.log("Signup successful:", response);
+    } catch (error: any) {
+      setLoading(false);
+      showErrorToast("Signup failed", error.response?.data?.message);
+      console.error("Signup failed:", error);
+    }
   };
 
   return (
@@ -28,8 +49,7 @@ export default function SignUpPage() {
             {/* Header */}
             <div className="text-center space-y-3 mb-8">
               <div className="w-40 h-12  rounded-lg flex items-center justify-center mx-auto">
-                    <Image src="/Logo png.png" alt="Logo" width={160} height={50} />
-    
+                <Image src="/Logo png.png" alt="Logo" width={160} height={50} />
               </div>
               <h1 className="text-2xl font-bold text-foreground">
                 Create your account
@@ -54,9 +74,9 @@ export default function SignUpPage() {
                     id="name"
                     type="text"
                     placeholder="John Doe"
-                    value={formData.name}
+                    value={formData.fullName}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({ ...formData, fullName: e.target.value })
                     }
                     className="w-full h-10 pl-10 pr-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     required
@@ -114,15 +134,6 @@ export default function SignUpPage() {
               </div>
 
               <div className="flex items-start gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  checked={formData.agreeToTerms}
-                  onChange={(e) =>
-                    setFormData({ ...formData, agreeToTerms: e.target.checked })
-                  }
-                  className="w-4 h-4 mt-1 rounded border-border text-primary focus:ring-2 focus:ring-ring cursor-pointer"
-                />
                 <label
                   htmlFor="terms"
                   className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
@@ -132,10 +143,7 @@ export default function SignUpPage() {
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link
-                    href="#"
-                    className="text-primary hover:underline"
-                  >
+                  <Link href="#" className="text-primary hover:underline">
                     Privacy Policy
                   </Link>
                 </label>
@@ -143,10 +151,16 @@ export default function SignUpPage() {
 
               <button
                 type="submit"
-                disabled={!formData.agreeToTerms}
                 className="w-full px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Account
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    Creating Account...
+                    <LoaderCircle className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-foreground" />
+                  </div>
+                ) : (
+                  "Create Account"
+                )}
               </button>
             </form>
 
@@ -168,7 +182,7 @@ export default function SignUpPage() {
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-              <GoogleIcon size={20} />
+                <GoogleIcon size={20} />
                 Continue with Google
               </button>
 
@@ -176,7 +190,7 @@ export default function SignUpPage() {
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-              <AppleIcon />
+                <AppleIcon />
                 Continue with Apple
               </button>
             </div>
@@ -197,4 +211,3 @@ export default function SignUpPage() {
     </div>
   );
 }
-

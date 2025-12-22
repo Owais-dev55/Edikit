@@ -1,3 +1,5 @@
+export const baseUrl = "https://edikit-api.onrender.com"
+
 export const plans = [
   {
     name: "Free",

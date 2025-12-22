@@ -1,20 +1,51 @@
 "use client";
 import React, { useState } from "react";
-import { Play, Mail, Lock } from "lucide-react";
+import { Mail, Lock, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
+import { loginUser , appleLogin } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/redux/store";
 
 const Login = () => {
+  const dispatch = useDispatch<AppDispatch>();
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", formData);
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await loginUser(formData.email, formData.password , dispatch)
+      console.log("Login successful:", response);
+      router.push("/");
+      showSuccessToast("Logged in successfully!");
+    } catch (error: any) {
+      showErrorToast("Login failed", error.response?.data?.message);
+      setError(error.response?.data?.message || "Login failed");
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleGoogleLogin = () => {
+  window.location.href = "https://edikit-api.onrender.com/auth/google";
+  router.push("/");
+};
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,8 +124,16 @@ const Login = () => {
               <button
                 type="submit"
                 className="w-full px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                disabled={loading}
               >
-                Log in
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    Signing In...
+                    <LoaderCircle className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-foreground" />
+                  </div>
+                ) : (
+                  "Sign In"
+                )}
               </button>
             </form>
 
@@ -113,18 +152,20 @@ const Login = () => {
             {/* Social Login */}
             <div className="space-y-3">
               <button
+              onClick={handleGoogleLogin}
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-              <GoogleIcon size={20} />
+                <GoogleIcon size={20} />
                 Continue with Google
               </button>
 
               <button
+              onClick={appleLogin}
                 type="button"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
-              <AppleIcon />
+                <AppleIcon />
                 Continue with Apple
               </button>
             </div>
@@ -147,4 +188,3 @@ const Login = () => {
 };
 
 export default Login;
-

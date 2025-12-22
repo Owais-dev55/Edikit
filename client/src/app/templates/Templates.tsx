@@ -19,7 +19,7 @@ const Templates = () => {
           </div>
 
           {/* Search & Filters */}
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between rounded-xl border bg-card p-4">
+          {/* <div className="flex flex-col md:flex-row gap-4 items-center justify-between rounded-xl border bg-card p-4">
             <div className="relative w-full md:w-96">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
@@ -43,7 +43,7 @@ const Templates = () => {
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Templates Grid */}
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

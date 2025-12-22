@@ -6,11 +6,18 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { ToogleTheme } from "../Theme/theme-toogle";
+import { useSelector, useDispatch } from "react-redux" 
+import type { RootState } from "@/redux/store" 
+import { setUser } from "@/redux/slices/authSlice";
 
 const Navbar = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+
+  const dispatch = useDispatch()
+  const user = useSelector((state: RootState) => state.user.user)
+
 
   useEffect(() => {
     setIsOpen(false);
@@ -50,7 +57,17 @@ const Navbar = () => {
 
             {/* Desktop buttons */}
             <div className="hidden sm:flex items-center gap-2">
-              <Link
+            {
+              user ? (
+                  <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold">
+            {user.avatar}
+          </div>
+          <span>{user.fullName}</span>
+        </div>
+              ) :(
+                <div>
+<Link
                 href="/login"
                 className="px-3 py-2 text-sm font-medium rounded-lg hover:bg-accent transition-colors"
               >
@@ -62,6 +79,10 @@ const Navbar = () => {
               >
                 Try for free
               </Link>
+                </div>
+              )
+            }
+              
             </div>
 
             {/* Mobile Menu Button */}
@@ -87,20 +108,34 @@ const Navbar = () => {
               Pricing
             </NavLink>
 
-            <div className="flex flex-col gap-2 pt-2">
-              <Link
-                href="/login"
-                className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-accent"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Try for free
-              </Link>
-            </div>
+        <div className="flex flex-col gap-2 pt-2">
+      {user ? (
+        <div className="flex items-center gap-2 px-4 py-2">
+          <div
+            className="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold"
+
+          >
+            {user.avatar} {/* initials */}
+          </div>
+          <span className="text-sm font-medium">{user.fullName}</span>
+        </div>
+      ) : (
+        <>
+          <Link
+            href="/login"
+            className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-accent"
+          >
+            Log in
+          </Link>
+          <Link
+            href="/signup"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            Try for free
+          </Link>
+        </>
+      )}
+    </div>
           </nav>
         </div>
       )}
