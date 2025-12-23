@@ -1,5 +1,6 @@
-// export const baseUrl = "https://edikit-api.onrender.com"
-export const baseUrl = "http://localhost:8000";
+// export const baseUrl = "http://localhost:8000";
+
+export const baseUrl = "https://edikit-api.onrender.com";
 
 export const plans = [
   {
