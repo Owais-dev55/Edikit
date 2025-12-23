@@ -6,12 +6,18 @@ import { AuthService } from '../auth.service';
 
 interface GoogleProfile {
   id: string;
+  displayName?: string;
   name: {
-    givenName: string;
-    familyName: string;
+    givenName?: string;
+    familyName?: string;
   };
   emails: Array<{ value: string }>;
   photos?: Array<{ value: string }>;
+  _json?: {
+    name?: string;
+    given_name?: string;
+    family_name?: string;
+  };
 }
 
 interface GoogleUser {
@@ -51,10 +57,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     done: VerifyCallback<GoogleUser>,
   ): void {
     const { id, name, emails } = profile;
+    const fullName = profile.displayName || name.givenName;
+
     const user: GoogleUser = {
       googleId: id,
       email: emails[0]?.value || '',
-      fullName: `${name.givenName} ${name.familyName}`,
+      fullName: fullName || 'Not Found',
       avatar: profile.photos?.[0]?.value || '',
     };
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call

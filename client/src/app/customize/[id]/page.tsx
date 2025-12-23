@@ -33,6 +33,7 @@ const templateData: Record<string, any> = {
 };
 
 const CustomizePage = () => {
+  
   const params = useParams();
   const templateId = params.id as string;
   const template = templateData[templateId] || templateData["1"];
