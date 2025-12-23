@@ -2,15 +2,27 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
-import { ToogleTheme } from "../Theme/theme-toogle";
+import { useEffect, useState, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X, LogOut, ChevronDown } from "lucide-react";
+import ToogleTheme from "../Theme/theme-toogle";
+import { useSelector, useDispatch } from "react-redux";
+import type { RootState } from "@/redux/store";
+import { getInitialsAvatar } from "@/utils/getInitialsAvatar";
+import { logoutUser } from "@/lib/auth";
+import type { AppDispatch } from "@/redux/store";
+import { showSuccessToast } from "@/components/Toast/showToast";
 
 const Navbar = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const dispatch = useDispatch<AppDispatch>();
+
+  const user = useSelector((state: RootState) => state.user.user);
 
   useEffect(() => {
     setIsOpen(false);
@@ -19,6 +31,32 @@ const Navbar = () => {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    if (isUserMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
+
+  const handleLogout = async () => {
+    await logoutUser(dispatch);
+    setIsUserMenuOpen(false);
+    showSuccessToast("Logged out successfully");
+    router.push("/");
+  };
 
   if (!isMounted) return null;
 
@@ -49,19 +87,66 @@ const Navbar = () => {
             <ToogleTheme />
 
             {/* Desktop buttons */}
-            <div className="hidden sm:flex items-center gap-2">
-              <Link
-                href="/login"
-                className="px-3 py-2 text-sm font-medium rounded-lg hover:bg-accent transition-colors"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Try for free
-              </Link>
+            <div className="hidden sm:flex items-center gap-2 pr-2">
+              {user ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  >
+                    {user.avatar?.startsWith("http") ? (
+                      <Image
+                        src={user.avatar}
+                        alt={user.fullName}
+                        width={32}
+                        height={32}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold text-xs">
+                        {user.avatar || getInitialsAvatar(user.fullName)}
+                      </div>
+                    )}
+                    <span>{user.fullName}</span>
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform ${
+                        isUserMenuOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-card shadow-lg z-50">
+                      <div className="py-1">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                        >
+                          <LogOut size={16} />
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <Link
+                    href="/login"
+                    className="px-3 py-2 text-sm font-medium rounded-lg hover:bg-accent transition-colors"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    Try for free
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -88,18 +173,51 @@ const Navbar = () => {
             </NavLink>
 
             <div className="flex flex-col gap-2 pt-2">
-              <Link
-                href="/login"
-                className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-accent"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Try for free
-              </Link>
+              {user ? (
+                <>
+                  <div className="flex items-center gap-2 px-4 py-2">
+                    {user.avatar?.startsWith("http") ? (
+                      <Image
+                        src={user.avatar}
+                        alt={user.fullName}
+                        width={32}
+                        height={32}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold text-xs">
+                        {user.avatar || getInitialsAvatar(user.fullName)}
+                      </div>
+                    )}
+                    <span className="text-sm font-medium">{user.fullName}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-accent"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Try for free
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>
