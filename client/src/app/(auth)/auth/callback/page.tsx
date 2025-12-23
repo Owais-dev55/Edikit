@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
@@ -8,7 +8,7 @@ import { refreshUser } from "@/lib/auth";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 import { LoaderCircle } from "lucide-react";
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();
@@ -44,5 +44,22 @@ export default function AuthCallback() {
         <p className="text-muted-foreground">Completing authentication...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen dark bg-background flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <LoaderCircle className="animate-spin h-8 w-8 text-primary mx-auto" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
