@@ -1,9 +1,13 @@
-import { categories, templates } from "@/utils/constant";
-import { Play, Search } from "lucide-react";
+'use client';
+
+import {  templates } from "@/utils/constant";
 import Image from "next/image";
 import Link from "next/link";
 
+
 const Templates = () => {
+
+
   return (
     <section className="relative py-20">
       <div className="container mx-auto px-4">
@@ -46,10 +50,12 @@ const Templates = () => {
           </div> */}
 
           {/* Templates Grid */}
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ">
             {templates.map((template) => (
-              <Link key={template.id} href={`/customize/${template.id}`}>
-                <div className="group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10">
+              
+                <div
+                 key={template.id}
+                className="group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10">
                   {/* Thumbnail */}
                   <div className="relative aspect-4/3 overflow-hidden bg-muted">
                     <Image
@@ -61,11 +67,11 @@ const Templates = () => {
                     />
 
                     {/* Hover Overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                    {/* <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
                       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary">
                         <Play className="h-6 w-6 fill-primary-foreground text-primary-foreground ml-0.5" />
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Duration Badge */}
                     <span className="absolute right-3 top-3 rounded-full bg-background/80 px-3 py-1 text-xs backdrop-blur">
@@ -86,9 +92,15 @@ const Templates = () => {
                     <p className="text-sm text-muted-foreground">
                       Customizable motion template ready to render.
                     </p>
+                    <Link href={`/customize/${template.id}`}>
+                    <button
+                    
+                    className="btn btn-primary w-full h-10 rounded-2xl mt-2 bg-primary/90 hover:bg-primary cursor-pointer">
+                      Customize
+                    </button>
+                    </Link>
                   </div>
                 </div>
-              </Link>
             ))}
           </div>
         </div>
