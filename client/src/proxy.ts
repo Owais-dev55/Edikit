@@ -3,34 +3,46 @@ import { NextRequest, NextResponse } from "next/server";
 export default function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Try multiple ways to get the cookie (handles edge runtime differences)
   const cookieHeader = request.headers.get("cookie") || "";
-  const cookies = request.cookies;
 
-  // Try getting cookie from cookies object first
-  let token = cookies.get("user_token")?.value;
+  let token: string | undefined;
 
-  // Fallback: parse from cookie header if cookies.get() doesn't work in edge runtime
-  if (!token && cookieHeader) {
-    const match = cookieHeader.match(/(?:^|;\s*)user_token=([^;]*)/);
-    token = match ? match[1] : undefined;
+  if (cookieHeader) {
+    const patterns = [
+      /(?:^|;\s*)user_token=([^;]*)/,
+      /user_token=([^;,\s]*)/,
+      /"user_token":"([^"]*)"/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = cookieHeader.match(pattern);
+      if (match && match[1]) {
+        token = match[1].trim();
+        break;
+      }
+    }
   }
 
-  // Debug logging (remove in production if needed)
-  console.log("Middleware - Path:", pathname);
-  console.log("Middleware - Cookie header exists:", !!cookieHeader);
-  console.log("Middleware - Token found:", !!token);
-  console.log(
-    "Middleware - All cookies:",
-    Array.from(cookies.getAll()).map((c) => c.name)
-  );
+  if (!token) {
+    try {
+      token = request.cookies.get("user_token")?.value;
+    } catch {}
+  }
 
-  // Protect /customize routes - redirect to login if not authenticated
+  if (process.env.NODE_ENV === "development") {
+    console.log("Proxy - Path:", pathname);
+    console.log("Proxy - Cookie header length:", cookieHeader.length);
+    console.log("Proxy - Token found:", !!token);
+    console.log(
+      "Proxy - Cookie header preview:",
+      cookieHeader.substring(0, 100)
+    );
+  }
+
   if (pathname.startsWith("/customize") && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect authenticated users away from auth pages
   if (token && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL("/", request.url));
   }
