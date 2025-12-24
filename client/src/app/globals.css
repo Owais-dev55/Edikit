@@ -151,3 +151,48 @@ body {
 @keyframes l3 {
     100% {background-position: left top,center top,right top }
 }
+
+ html {
+    scrollbar-color: var(--primary) var(--border);
+    scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ring);
+  }
+
+  /* Remove arrow buttons from scrollbar */
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  /* Dark mode scrollbar */
+  html.dark {
+    scrollbar-color: var(--primary) var(--border);
+  }
+
+  html.dark ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+
+  html.dark ::-webkit-scrollbar-thumb {
+    background: var(--primary);
+  }
+
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    background: var(--ring);
+  }
