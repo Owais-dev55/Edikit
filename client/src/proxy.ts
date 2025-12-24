@@ -10,7 +10,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect authenticated users away from auth pages
   if (token && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL("/", request.url));
   }

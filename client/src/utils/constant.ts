@@ -1,7 +1,5 @@
-export const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL
-console.log("Backend URL:", baseUrl);
-
-// export const baseUrl = "https://edikit-api.onrender.com";
+export const baseUrl =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://edikit-api.onrender.com";
 
 export const plans = [
   {
