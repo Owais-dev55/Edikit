@@ -86,7 +86,7 @@ export default function Hero() {
       <main>
         {/* Hero Section - Video/Image on Left, Text on Right */}
         <section className="py-12 md:py-24 bg-background">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-1">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               {/* Video Section - Left Side */}
               <div className="order-2 lg:order-1">
@@ -106,8 +106,8 @@ export default function Hero() {
               {/* Text Section - Right Side */}
               <div className="order-1 lg:order-2 space-y-6">
                 <div className="space-y-4">
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-balance text-foreground leading-tight">
-                    Make viral production-level animations in{" "}
+                  <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold text-balance text-foreground leading-tight">
+                    Make viral production-level animations in
                     <span className="bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                       seconds
                     </span>
