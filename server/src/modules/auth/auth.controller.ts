@@ -99,6 +99,9 @@ export class AuthController {
       'FRONTEND_URL',
       'http://localhost:3000',
     );
+
+    console.log(frontendUrl);
+
     return res.redirect(`${frontendUrl}/auth/callback?success=true`);
   }
 
