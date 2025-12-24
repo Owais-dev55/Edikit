@@ -106,9 +106,9 @@ export default function Hero() {
               {/* Text Section - Right Side */}
               <div className="order-1 lg:order-2 space-y-6">
                 <div className="space-y-4">
-                  <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold text-balance text-foreground leading-tight">
+                  <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold text-balance text-foreground leading-tight ">
                     Make viral production-level animations in
-                    <span className="bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                    <span className="bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent ml-2">
                       seconds
                     </span>
                     .
