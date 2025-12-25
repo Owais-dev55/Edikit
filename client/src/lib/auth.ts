@@ -106,3 +106,11 @@ export const logoutUser = async (dispatch: AppDispatch) => {
     dispatch(clearUser());
   }
 };
+
+export const  handleGoogleLogin = async () => {
+    window.location.href = `${baseUrl}/auth/google`;
+    const { data } = await api.get("/auth/me")
+    localStorage.setItem("user", JSON.stringify(data));
+    console.log("Logged in user:", data);
+    return data;
+  };

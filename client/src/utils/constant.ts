@@ -119,13 +119,3 @@ export const categories = [
   "Events",
   "Technology",
 ];
-export const durations = ["All", "Under 10s", "10s - 20s", "20s - 30s", "30s+"];
-
-export const durationFilters: { [key: string]: (duration: number) => boolean } =
-  {
-    All: () => true,
-    "Under 10s": (duration: number) => duration < 10,
-    "10s - 20s": (duration: number) => duration >= 10 && duration <= 20,
-    "20s - 30s": (duration: number) => duration > 20 && duration <= 30,
-    "30s+": (duration: number) => duration > 30,
-  };
