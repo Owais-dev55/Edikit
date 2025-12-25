@@ -37,7 +37,6 @@ export const loginUser = async (
       ? data.avatar
       : getInitialsAvatar(data.fullName);
 
-    localStorage.setItem("user", JSON.stringify(data));
     const userWithAvatar = { ...data, avatar };
     dispatch(setUser(userWithAvatar));
     return data;
@@ -99,10 +98,8 @@ export const appleLogin = async () => {
 export const logoutUser = async (dispatch: AppDispatch) => {
   try {
     await api.post("/auth/logout");
-    localStorage.removeItem("user");
     dispatch(clearUser());
   } catch {
-    localStorage.removeItem("user");
     dispatch(clearUser());
   }
 };
