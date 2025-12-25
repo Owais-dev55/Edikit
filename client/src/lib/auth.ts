@@ -78,12 +78,13 @@ export const signupUser = async (
   return data;
 };
 
-export const appleLogin = async () => {
+export const appleLogin = async (dispatch: AppDispatch) => {
   const response = await window.AppleID.auth.signIn();
 
   const res = await fetch(`${baseUrl}/auth/apple`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({
       identityToken: response.authorization.id_token,
       fullName:
@@ -92,7 +93,16 @@ export const appleLogin = async () => {
   });
 
   const data = await res.json();
+
+  if (res.ok && data) {
+    const avatar = data.avatar?.startsWith("http")
+      ? data.avatar
+      : getInitialsAvatar(data.fullName);
+    dispatch(setUser({ ...data, avatar }));
+  }
+
   console.log("Logged in user:", data);
+  return data;
 };
 
 export const logoutUser = async (dispatch: AppDispatch) => {
@@ -104,10 +114,10 @@ export const logoutUser = async (dispatch: AppDispatch) => {
   }
 };
 
-export const  handleGoogleLogin = async () => {
-    window.location.href = `${baseUrl}/auth/google`;
-    const { data } = await api.get("/auth/me")
-    localStorage.setItem("user", JSON.stringify(data));
-    console.log("Logged in user:", data);
-    return data;
-  };
+export const handleGoogleLogin = async () => {
+  window.location.href = `${baseUrl}/auth/google`;
+  const { data } = await api.get("/auth/me");
+  localStorage.setItem("user", JSON.stringify(data));
+  console.log("Logged in user:", data);
+  return data;
+};

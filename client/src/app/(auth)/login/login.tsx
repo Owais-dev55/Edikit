@@ -160,7 +160,7 @@ const Login = () => {
               </button>
 
               <button
-                onClick={appleLogin}
+                onClick={() => appleLogin(dispatch)}
                 type="button"
                 className="w-full cursor-pointer inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
