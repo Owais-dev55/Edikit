@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import Loader from "@/components/Overlay/Loader";
+import api from "@/lib/auth";
+import { showInfoToast } from "@/components/Toast/showToast";
 
 const templateData: Record<string, any> = {
   "1": {
@@ -37,6 +41,8 @@ const CustomizePage = () => {
   const params = useParams();
   const templateId = params.id as string;
   const template = templateData[templateId] || templateData["1"];
+  const [user, setUser] = useState(null);
+  const [loading , setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     headline: "Your Product Name",
@@ -73,6 +79,39 @@ const CustomizePage = () => {
     }, 3000);
   };
 
+  const router = useRouter();
+
+const hasShownToast = useRef(false);
+
+useEffect(() => {
+  const checkAuth = async () => {
+    try {
+      const { data } = await api.get("/auth/me", {
+        withCredentials: true,
+      });
+
+      localStorage.setItem("user", JSON.stringify(data));
+      setLoading(false);
+    } catch {
+      if (!hasShownToast.current) {
+        hasShownToast.current = true;
+        showInfoToast("Please log in to customize templates");
+      }
+      router.replace("/login");
+    }
+  };
+
+  checkAuth();
+}, []);
+
+  if(loading) {
+    return (
+      <div className=" h-screen flex justify-center items-center">
+        <Loader />
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">

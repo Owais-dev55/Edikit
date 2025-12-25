@@ -9,8 +9,8 @@ import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
-import { baseUrl } from "@/utils/constant";
 
+import { handleGoogleLogin } from "@/lib/auth";
 const Login = () => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -46,11 +46,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-
-  const handleGoogleLogin = () => {
-    window.location.href = `${baseUrl}/auth/google`;
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-16">

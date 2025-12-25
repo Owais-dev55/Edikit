@@ -42,7 +42,7 @@ export const CustomToast = ({
 
       <button
         onClick={() => toast.dismiss(t.id)}
-        className="text-white/80 hover:text-white"
+        className="text-white/80 hover:text-white text-xl cursor-pointer ml-4"
       >
         ✕
       </button>
