@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -13,6 +13,7 @@ import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/Overlay/Loader";
 import api from "@/lib/auth";
+import { showInfoToast } from "@/components/Toast/showToast";
 
 const templateData: Record<string, any> = {
   "1": {
@@ -80,6 +81,8 @@ const CustomizePage = () => {
 
   const router = useRouter();
 
+const hasShownToast = useRef(false);
+
 useEffect(() => {
   const checkAuth = async () => {
     try {
@@ -89,8 +92,11 @@ useEffect(() => {
 
       localStorage.setItem("user", JSON.stringify(data));
       setLoading(false);
-    } catch (error) {
-      console.log("Not authenticated");
+    } catch {
+      if (!hasShownToast.current) {
+        hasShownToast.current = true;
+        showInfoToast("Please log in to customize templates");
+      }
       router.replace("/login");
     }
   };

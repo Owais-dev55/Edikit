@@ -1,17 +1,16 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Mail, Lock, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
-import api, { loginUser, appleLogin } from "@/lib/auth";
+import { loginUser, appleLogin } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 
 import { handleGoogleLogin } from "@/lib/auth";
-import Loader from "@/components/Overlay/Loader";
 const Login = () => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -47,29 +46,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-  const checkAuth = async () => {
-    try {
-      setLoading(true);
-      await api.get("/auth/me", { withCredentials: true });
-    router.replace("/");
-    } catch {
-      setLoading(false);
-    }
-  };
-
-  checkAuth();
-}, []);
-
-if(loading) {
-    return (
-      <div className=" h-screen flex justify-center items-center">
-        <Loader />
-      </div>
-    );
-  }
-  
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-16">
