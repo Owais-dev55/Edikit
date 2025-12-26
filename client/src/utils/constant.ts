@@ -1,8 +1,9 @@
 export const baseUrl =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "https://edikit-api.onrender.com";
+  process.env.NEXT_PUBLIC_BACKEND_URL 
 
 export const plans = [
   {
+    id: "prod_TffitWtEKT88s6",
     name: "Free",
     price: "$0",
     period: "forever",
@@ -12,6 +13,7 @@ export const plans = [
     popular: false,
   },
   {
+    id: "prod_Tffkh0QPN6G92B",
     name: "Basic",
     price: "$5.99",
     period: "per month",
@@ -26,6 +28,7 @@ export const plans = [
     popular: true,
   },
   {
+    id: "prod_TffnEJPkjRMHpY",
     name: "Pro",
     price: "$39.99",
     period: "per month",
