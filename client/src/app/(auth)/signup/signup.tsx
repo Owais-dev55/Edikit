@@ -31,7 +31,7 @@ export default function SignUpPage() {
         formData.password
       );
       console.log(response);
-      showSuccessToast("Signup successful", "Your account has been created." );
+      showSuccessToast("Signup successful", "Your account has been created.");
       router.push("/login");
       console.log("Signup successful:", response);
     } catch (error: any) {

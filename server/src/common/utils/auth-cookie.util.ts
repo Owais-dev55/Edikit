@@ -10,6 +10,7 @@ function getCookieOptions(configService: ConfigService, maxAge?: number) {
     httpOnly: true,
     secure: isProduction,
     sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax' | 'strict',
+    path: '/',
     ...(maxAge && { maxAge }),
   };
 
