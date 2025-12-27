@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hash } from 'argon2';
+import { PlanType } from '@generated/prisma/enums';
 
 @Injectable()
 export class UserService {
@@ -61,5 +62,34 @@ export class UserService {
       where: { id },
     });
     return result && true;
+  }
+  
+  async updateSubscription(
+    userId: string,
+    data: {
+      planType: PlanType;
+      stripeCustomerId?: string;
+      stripeSubscriptionId?: string;
+      stripePriceId?: string;
+      stripeCurrentPeriodEnd?: Date;
+    },
+  ) {
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        planType: data.planType,
+        stripeCustomerId: data.stripeCustomerId,
+        stripeSubscriptionId: data.stripeSubscriptionId,
+        stripePriceId: data.stripePriceId,
+        stripeCurrentPeriodEnd: data.stripeCurrentPeriodEnd,
+      },
+    });
+  }
+
+  // Add this helper method to find user by Stripe customer ID
+  async findByStripeCustomerId(stripeCustomerId: string) {
+    return await this.prisma.user.findUnique({
+      where: { stripeCustomerId },
+    });
   }
 }

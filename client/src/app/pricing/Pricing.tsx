@@ -2,8 +2,15 @@
 import { Check } from "lucide-react";
 import { handlePayment } from "@/lib/payment";
 import { plans } from "@/utils/constant";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
 const Pricing = () => {
+  const userId = useSelector((state: RootState) => state.user.user?.id);
+   const user = useSelector((state: RootState) => state.user.user);
+
+  console.log("Full user object:", user);  // Debug log
+  console.log("UserId:", userId); 
   return (
     <div className="min-h-screen bg-background">
       <main>
@@ -62,7 +69,7 @@ const Pricing = () => {
 
                     {/* CTA Button */}
                     <button
-                      onClick={() => handlePayment(plan.id)}
+                      onClick={() => handlePayment(plan.id , userId)}
                       className={`w-full px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
                         plan.popular
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"

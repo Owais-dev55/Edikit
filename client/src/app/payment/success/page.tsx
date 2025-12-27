@@ -34,16 +34,26 @@ function SuccessContent() {
   }, [sessionId, plan]);
 
   const verifySession = async (sessionId: string) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stripe/verify-session?session_id=${sessionId}`);
-      const data = await response.json();
-      setSessionData(data);
-    } catch (error) {
-      console.error('Error verifying session:', error);
-    } finally {
-      setLoading(false);
+  
+  try {
+    const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/stripe/verify-session?session_id=${sessionId}`;
+    
+    const response = await fetch(url);
+      
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+    
+    const data = await response.json();
+   
+    setSessionData(data);
+  } catch (error) {
+    console.error('Error verifying session:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) {
     return (
