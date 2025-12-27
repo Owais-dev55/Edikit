@@ -11,7 +11,6 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import Loader from "@/components/Overlay/Loader";
 import api from "@/lib/auth";
 import { showInfoToast } from "@/components/Toast/showToast";
 
@@ -39,10 +38,15 @@ const templateData: Record<string, any> = {
 const CustomizePage = () => {
   
   const params = useParams();
+  const router = useRouter();
+
   const templateId = params.id as string;
   const template = templateData[templateId] || templateData["1"];
-  const [user, setUser] = useState(null);
-  const [loading , setLoading] = useState(true);
+
+   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     headline: "Your Product Name",
@@ -54,9 +58,25 @@ const CustomizePage = () => {
   });
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
 
+    useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data } = await api.get("/auth/me", {
+          withCredentials: true,
+        });
+        localStorage.setItem("user", JSON.stringify(data));
+        setIsLoggedIn(true);
+      } catch {
+        setIsLoggedIn(false);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+  
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -69,8 +89,15 @@ const CustomizePage = () => {
     }
   };
 
-  const handleGeneratePreview = async () => {
+const handleGeneratePreview = () => {
+    if (!isLoggedIn) {
+      showInfoToast("Please log in to generate preview");
+      router.push("/login");
+      return;
+    }
+
     setIsGenerating(true);
+
     setTimeout(() => {
       setGeneratedVideo(
         "/placeholder.svg?height=480&width=854&text=Generated+Video+Preview"
@@ -79,39 +106,6 @@ const CustomizePage = () => {
     }, 3000);
   };
 
-  const router = useRouter();
-
-const hasShownToast = useRef(false);
-
-useEffect(() => {
-  const checkAuth = async () => {
-    try {
-      const { data } = await api.get("/auth/me", {
-        withCredentials: true,
-      });
-
-      localStorage.setItem("user", JSON.stringify(data));
-      setLoading(false);
-    } catch {
-      if (!hasShownToast.current) {
-        hasShownToast.current = true;
-        showInfoToast("Please log in to customize templates");
-      }
-      router.replace("/login");
-    }
-  };
-
-  checkAuth();
-}, []);
-
-  if(loading) {
-    return (
-      <div className=" h-screen flex justify-center items-center">
-        <Loader />
-      </div>
-    );
-  }
-  
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">
@@ -241,7 +235,7 @@ useEffect(() => {
               </div>
 
               {/* Color Pickers */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid lg:grid-cols-2 sm:grid-cols-1 md:grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <label
                     htmlFor="primaryColor"
@@ -313,19 +307,24 @@ useEffect(() => {
             <button
               onClick={handleGeneratePreview}
               disabled={isGenerating}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating Preview...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Generate Preview
-                </>
-              )}
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating Preview...
+                  </>
+                ) : isLoggedIn ? (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Generate Preview
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Login to Generate Preview
+                  </>
+                )}
             </button>
           </div>
 
