@@ -69,9 +69,6 @@ export class StripeService {
                 expand: ['line_items', 'customer', 'subscription']
             });
 
-            console.log('Session retrieved:', session.id);
-            console.log('Payment status:', session.payment_status);
-
             if (session.payment_status !== 'paid') {
                 throw new Error('Payment not completed');
             }
@@ -79,9 +76,6 @@ export class StripeService {
             const lineItems = session.line_items?.data[0];
             const subscription = session.subscription as any;
             const userId = session.metadata?.userId;
-
-            console.log('UserId from metadata:', userId);
-            console.log('Plan name from metadata:', session.metadata?.planName);
 
             let planType: PlanType = PlanType.FREE;
             const planName = session.metadata?.planName || '';
@@ -92,10 +86,7 @@ export class StripeService {
                 planType = PlanType.PRO;
             }
 
-            console.log('Determined plan type:', planType);
-
             if (userId) {
-                console.log('Updating user subscription...');
                 const updated = await this.userService.updateSubscription(userId, {
                     planType,
                     stripeCustomerId: typeof session.customer === 'string' 
@@ -107,10 +98,7 @@ export class StripeService {
                         ? new Date(subscription.current_period_end * 1000) 
                         : undefined,
                 });
-                console.log('User updated:', updated);
-            } else {
-                console.log('No userId found in metadata!');
-            }
+            } 
             
             return {
                 success: true,
