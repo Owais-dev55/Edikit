@@ -1,0 +1,11 @@
+[build]
+builder = "railpack"
+buildCommand = "pnpm prisma:generate && pnpm build"
+
+[deploy]
+preDeployCommand = "pnpm prisma:migrate:deploy"
+startCommand = "pnpm start"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+

@@ -64,12 +64,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(
-    `Server is running on http://localhost:${port} in ${nodeEnv} mode`,
+    `Server is running on http://0.0.0.0:${port} in ${nodeEnv} mode`,
   );
   console.log(
-    `Swagger documentation available at http://localhost:${port}/api-docs`,
+    `Swagger documentation available at http://0.0.0.0:${port}/api-docs`,
   );
 }
 
