@@ -17,7 +17,7 @@ export default function Providers({
 
   return (
     <Provider store={store}>
-      <Toaster position="top-right" />
+      <Toaster position="top-center" />
       {children}
     </Provider>
   );
