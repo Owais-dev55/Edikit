@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install && pnpm prisma:generate && pnpm build"
+buildCommand = "pnpm prisma:generate && pnpm build"
 
 [deploy]
 preDeployCommand = "pnpm prisma:migrate:deploy"
