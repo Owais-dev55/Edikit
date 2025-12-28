@@ -21,10 +21,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         (req: Request): string | null => {
           const tokenName = configService.get<string>(
             'JWT_TOKEN_NAME',
-            'auth_token',
+            'user_token',
           );
-          const token = req?.cookies?.[tokenName] as string | undefined;
-          return token || null;
+          const cookieToken = req?.cookies?.[tokenName] as string | undefined;
+          if (cookieToken) return cookieToken;
+
+          const authHeader = req.headers.authorization;
+          if (authHeader && authHeader.startsWith('Bearer ')) {
+            return authHeader.substring(7);
+          }
+
+          return null;
         },
       ]),
       secretOrKey: secret,

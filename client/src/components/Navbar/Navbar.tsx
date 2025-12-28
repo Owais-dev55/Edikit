@@ -14,23 +14,30 @@ import type { AppDispatch } from "@/redux/store";
 import { showSuccessToast } from "@/components/Toast/showToast";
 
 const Navbar = () => {
-  const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [minLoadingTime, setMinLoadingTime] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch<AppDispatch>();
 
   const user = useSelector((state: RootState) => state.user.user);
+  const isLoading = useSelector((state: RootState) => state.user.isLoading);
 
   useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    setIsMounted(true);
+    const timer = setTimeout(() => {
+      setMinLoadingTime(false);
+    }, 300);
+    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,13 +65,10 @@ const Navbar = () => {
     router.push("/");
   };
 
-  if (!isMounted) return null;
-
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/Logo png.png"
@@ -88,7 +92,12 @@ const Navbar = () => {
 
             {/* Desktop buttons */}
             <div className="hidden sm:flex items-center gap-2 pr-2">
-              {user ? (
+              {isLoading || minLoadingTime ? (
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 animate-pulse" />
+                  <div className="w-29 h-4 rounded bg-gray-300 dark:bg-gray-700 animate-pulse" />
+                </div>
+              ) : user ? (
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -120,28 +129,33 @@ const Navbar = () => {
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 rounded-lg border border-border bg-card shadow-lg z-50">
                       <div className="py-2">
-                        {/* User Info with Plan Badge */}
                         <div className="px-4 py-2 border-b border-border">
-                          <p className="text-sm font-medium text-foreground">{user.fullName}</p>
-                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                          <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            user.planType === 'PRO' 
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                              : user.planType === 'BASIC'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                          }`}>
+                          <p className="text-sm font-medium text-foreground">
+                            {user.fullName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {user.email}
+                          </p>
+                          <span
+                            className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              user.planType === "PRO"
+                                ? "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
+                                : user.planType === "BASIC"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                            }`}
+                          >
                             {user.planType} Plan
                           </span>
                         </div>
 
                         {/* Upgrade/Manage Plan Button */}
-                        {user.planType === 'FREE' ? (
+                        {user.planType === "FREE" ? (
                           <Link
                             href="/pricing"
                             onClick={() => setIsUserMenuOpen(false)}
                             className="w-full flex items-center justify-center gap-2 px-4 py-2 mx-2 my-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                            style={{ width: 'calc(100% - 1rem)' }}
+                            style={{ width: "calc(100% - 1rem)" }}
                           >
                             Upgrade Plan
                           </Link>
@@ -150,7 +164,7 @@ const Navbar = () => {
                             href="/pricing"
                             onClick={() => setIsUserMenuOpen(false)}
                             className="w-full flex items-center justify-center gap-2 px-4 py-2 mx-2 my-2 text-sm font-medium rounded-lg border border-border hover:bg-accent transition-colors"
-                            style={{ width: 'calc(100% - 1rem)' }}
+                            style={{ width: "calc(100% - 1rem)" }}
                           >
                             Manage Plan
                           </Link>
@@ -210,7 +224,16 @@ const Navbar = () => {
             </NavLink>
 
             <div className="flex flex-col gap-2 pt-2">
-              {user ? (
+              {isLoading || minLoadingTime ? (
+                // Loading skeleton for mobile
+                <div className="flex items-center gap-2 px-4 py-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 animate-pulse" />
+                  <div className="flex flex-col gap-1">
+                    <div className="w-24 h-4 rounded bg-gray-300 dark:bg-gray-700 animate-pulse" />
+                    <div className="w-16 h-3 rounded bg-gray-300 dark:bg-gray-700 animate-pulse" />
+                  </div>
+                </div>
+              ) : user ? (
                 <>
                   <div className="flex items-center gap-2 px-4 py-2">
                     {user.avatar?.startsWith("http") ? (
@@ -227,22 +250,26 @@ const Navbar = () => {
                       </div>
                     )}
                     <div className="flex flex-col flex-1">
-                      <span className="text-sm font-medium">{user.fullName}</span>
+                      <span className="text-sm font-medium">
+                        {user.fullName}
+                      </span>
                       {/* Plan Badge */}
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${
-                        user.planType === 'PRO' 
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                          : user.planType === 'BASIC'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                          : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                      }`}>
+                      <span
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${
+                          user.planType === "PRO"
+                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
+                            : user.planType === "BASIC"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
+                      >
                         {user.planType}
                       </span>
                     </div>
                   </div>
 
                   {/* Upgrade button for FREE users */}
-                  {user.planType === 'FREE' && (
+                  {user.planType === "FREE" && (
                     <Link
                       href="/pricing"
                       onClick={() => setIsOpen(false)}
@@ -253,7 +280,7 @@ const Navbar = () => {
                   )}
 
                   {/* Manage Subscription for paid users */}
-                  {(user.planType === 'BASIC' || user.planType === 'PRO') && (
+                  {(user.planType === "BASIC" || user.planType === "PRO") && (
                     <Link
                       href="/pricing"
                       onClick={() => setIsOpen(false)}
