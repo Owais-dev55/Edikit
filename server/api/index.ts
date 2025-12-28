@@ -1,15 +1,25 @@
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import { AppModule } from '../src/app.module';
+import express from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { AppModule } from './app.module';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+let cachedApp: express.Application;
 
-  const port = process.env.PORT || 3000;
-  const nodeEnv = process.env.NODE_ENV || 'development';
+async function createApp(): Promise<express.Application> {
+  if (cachedApp) {
+    return cachedApp;
+  }
+
+  const expressApp = express();
+  const app = await NestFactory.create(
+    AppModule,
+    new ExpressAdapter(expressApp),
+  );
+
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
   // Security middleware
@@ -64,13 +74,15 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
-  await app.listen(port);
-  console.log(
-    `Server is running on http://localhost:${port} in ${nodeEnv} mode`,
-  );
-  console.log(
-    `Swagger documentation available at http://localhost:${port}/api-docs`,
-  );
+  await app.init();
+  cachedApp = expressApp;
+  return expressApp;
 }
 
-void bootstrap();
+export default async function handler(
+  req: express.Request,
+  res: express.Response,
+): Promise<void> {
+  const app = await createApp();
+  app(req, res);
+}
