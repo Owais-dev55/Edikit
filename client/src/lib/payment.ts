@@ -1,3 +1,4 @@
+import { showErrorToast } from "@/components/Toast/showToast";
 import { baseUrl } from "@/utils/constant";
 import axios from "axios";
 
@@ -27,11 +28,22 @@ const pricingPlans: Record<string, {
   },
 };
 
-export const handlePayment = (planId: string) => {
+export const handlePayment = (planId: string , userId?:string) => {
   const plan = pricingPlans[planId];
+
+  if(planId === 'prod_TffitWtEKT88s6') {
+    console.log("Selected Free Plan. No payment required.");
+    return;
+  }
   
   if (!plan) {
     console.error(`Invalid plan ID: ${planId}`);
+    return;
+  }
+
+ if (!userId) {
+    console.error("User not logged in");
+    showErrorToast("Please log in to proceed with the payment.");
     return;
   }
 
@@ -39,7 +51,8 @@ export const handlePayment = (planId: string) => {
     amount: plan.amount,
     productName: plan.productName,
     currency: plan.currency,
-    interval: plan.interval
+    interval: plan.interval,
+    userId: userId
   })
   .then((response) => {
     if (response.data.url) {

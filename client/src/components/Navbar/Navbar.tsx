@@ -118,11 +118,48 @@ const Navbar = () => {
 
                   {/* User Dropdown Menu */}
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-card shadow-lg z-50">
-                      <div className="py-1">
+                    <div className="absolute right-0 mt-2 w-56 rounded-lg border border-border bg-card shadow-lg z-50">
+                      <div className="py-2">
+                        {/* User Info with Plan Badge */}
+                        <div className="px-4 py-2 border-b border-border">
+                          <p className="text-sm font-medium text-foreground">{user.fullName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            user.planType === 'PRO' 
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                              : user.planType === 'BASIC'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          }`}>
+                            {user.planType} Plan
+                          </span>
+                        </div>
+
+                        {/* Upgrade/Manage Plan Button */}
+                        {user.planType === 'FREE' ? (
+                          <Link
+                            href="/pricing"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 mx-2 my-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            style={{ width: 'calc(100% - 1rem)' }}
+                          >
+                            Upgrade Plan
+                          </Link>
+                        ) : (
+                          <Link
+                            href="/pricing"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 mx-2 my-2 text-sm font-medium rounded-lg border border-border hover:bg-accent transition-colors"
+                            style={{ width: 'calc(100% - 1rem)' }}
+                          >
+                            Manage Plan
+                          </Link>
+                        )}
+
+                        {/* Logout Button */}
                         <button
                           onClick={handleLogout}
-                          className="w-full cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                          className="w-full cursor-pointer flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors border-t border-border"
                         >
                           <LogOut size={16} />
                           Logout
@@ -189,8 +226,43 @@ const Navbar = () => {
                         {user.avatar || getInitialsAvatar(user.fullName)}
                       </div>
                     )}
-                    <span className="text-sm font-medium">{user.fullName}</span>
+                    <div className="flex flex-col flex-1">
+                      <span className="text-sm font-medium">{user.fullName}</span>
+                      {/* Plan Badge */}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${
+                        user.planType === 'PRO' 
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                          : user.planType === 'BASIC'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                      }`}>
+                        {user.planType}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Upgrade button for FREE users */}
+                  {user.planType === 'FREE' && (
+                    <Link
+                      href="/pricing"
+                      onClick={() => setIsOpen(false)}
+                      className="mx-4 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-center"
+                    >
+                      Upgrade Plan
+                    </Link>
+                  )}
+
+                  {/* Manage Subscription for paid users */}
+                  {(user.planType === 'BASIC' || user.planType === 'PRO') && (
+                    <Link
+                      href="/pricing"
+                      onClick={() => setIsOpen(false)}
+                      className="mx-4 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-accent text-center"
+                    >
+                      Manage Plan
+                    </Link>
+                  )}
+
                   <button
                     onClick={() => {
                       handleLogout();
