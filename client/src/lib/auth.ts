@@ -8,7 +8,17 @@ declare global {
   interface Window {
     AppleID: {
       auth: {
-        signIn: () => Promise<any>;
+        signIn: () => Promise<{
+          authorization: {
+            id_token: string;
+          };
+          user?: {
+            name?: {
+              firstName?: string;
+              lastName?: string;
+            };
+          };
+        }>;
       };
     };
   }
@@ -22,6 +32,20 @@ const api = axios.create({
   },
 });
 
+// Request interceptor: Add Bearer token if cookie not available (mobile browser fallback)
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("user_token");
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export default api;
 
 //login user endpoint
@@ -32,7 +56,19 @@ export const loginUser = async (
 ) => {
   try {
     const { data } = await api.post("/auth/login", { email, password });
-    // Use avatar URL from server if available, otherwise generate initials
+
+    setTimeout(() => {
+      const hasCookie = document.cookie.includes("user_token=");
+
+      if (data.token) {
+        if (!hasCookie) {
+          localStorage.setItem("user_token", data.token);
+        } else {
+          localStorage.removeItem("user_token");
+        }
+      }
+    }, 100);
+
     const avatar = data.avatar?.startsWith("http")
       ? data.avatar
       : getInitialsAvatar(data.fullName);
@@ -52,13 +88,13 @@ export const refreshUser = async (dispatch: AppDispatch) => {
     const { data } = await api.get("/auth/me");
     console.log("✅ /auth/me success:", data);
 
-    // Use avatar URL from server if available, otherwise generate initials
     const avatar = data.avatar?.startsWith("http")
       ? data.avatar
       : getInitialsAvatar(data.fullName);
     dispatch(setUser({ ...data, avatar }));
   } catch (error) {
-    console.log("❌ /auth/me failed", error);
+    console.log("❌/auth/me failed", error);
+    localStorage.removeItem("user_token");
     dispatch(clearUser());
   }
 };
@@ -67,13 +103,33 @@ export const refreshUser = async (dispatch: AppDispatch) => {
 export const signupUser = async (
   fullName: string,
   email: string,
-  password: string
+  password: string,
+  dispatch: AppDispatch
 ) => {
   const { data } = await api.post("/auth/register", {
     fullName,
     email,
     password,
   });
+
+  if (data.token) {
+    setTimeout(() => {
+      const hasCookie = document.cookie.includes("user_token=");
+      if (!hasCookie) {
+        localStorage.setItem("user_token", data.token);
+        console.log("🍪 Cookie blocked - using Bearer token fallback");
+      } else {
+        localStorage.removeItem("user_token");
+      }
+    }, 100);
+  }
+
+  const avatar = data.avatar?.startsWith("http")
+    ? data.avatar
+    : getInitialsAvatar(data.fullName);
+
+  const userWithAvatar = { ...data, avatar };
+  dispatch(setUser(userWithAvatar));
 
   return data;
 };
@@ -94,6 +150,18 @@ export const appleLogin = async (dispatch: AppDispatch) => {
 
   const data = await res.json();
 
+  if (data.token) {
+    setTimeout(() => {
+      const hasCookie = document.cookie.includes("user_token=");
+      if (!hasCookie) {
+        localStorage.setItem("user_token", data.token);
+        console.log("🍪 Cookie blocked - using Bearer token fallback");
+      } else {
+        localStorage.removeItem("user_token");
+      }
+    }, 100);
+  }
+
   if (res.ok && data) {
     const avatar = data.avatar?.startsWith("http")
       ? data.avatar
@@ -108,8 +176,10 @@ export const appleLogin = async (dispatch: AppDispatch) => {
 export const logoutUser = async (dispatch: AppDispatch) => {
   try {
     await api.post("/auth/logout");
+    localStorage.removeItem("user_token");
     dispatch(clearUser());
   } catch {
+    localStorage.removeItem("user_token");
     dispatch(clearUser());
   }
 };

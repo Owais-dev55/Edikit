@@ -11,10 +11,12 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  isLoading: boolean;
 }
 
 const initialState: AuthState = {
   user: null,
+  isLoading: true, // Start with loading true to prevent content shift
 };
 
 const authSlice = createSlice({
@@ -23,12 +25,17 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
+      state.isLoading = false;
     },
     clearUser: (state) => {
       state.user = null;
+      state.isLoading = false;
+    },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
     },
   },
 });
 
-export const { setUser, clearUser } = authSlice.actions;
+export const { setUser, clearUser, setLoading } = authSlice.actions;
 export default authSlice.reducer;

@@ -164,6 +164,7 @@ export class AuthService {
     fullName: string;
     role: string;
     planType: string;
+    token?: string;
   }> {
     const userId = (user.id || user.userId) as string;
     const token = await this.generateToken(userId);
@@ -175,6 +176,7 @@ export class AuthService {
       fullName: user.fullName,
       role: user.role,
       planType: user.planType,
+      token,
     };
   }
 

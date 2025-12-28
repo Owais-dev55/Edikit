@@ -50,8 +50,12 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto, @Res() res: Response) {
     const userData = await this.authService.register(registerDto);
     const user = await this.authService.getCurrentUser(userData.userId);
-    await this.authService.generateTokenAndSetCookie(user, res);
-    return res.json(userData);
+    const authData = await this.authService.generateTokenAndSetCookie(
+      { ...user },
+      res,
+    );
+
+    return res.json({ ...userData, token: authData.token });
   }
 
   @Public()

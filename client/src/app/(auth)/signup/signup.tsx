@@ -9,9 +9,12 @@ import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
 import { signupUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/redux/store";
 
 export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -28,7 +31,8 @@ export default function SignUpPage() {
       const response = await signupUser(
         formData.fullName,
         formData.email,
-        formData.password
+        formData.password,
+        dispatch
       );
       console.log(response);
       showSuccessToast("Signup successful", "Your account has been created.");
