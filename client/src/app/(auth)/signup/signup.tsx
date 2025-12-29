@@ -36,7 +36,7 @@ export default function SignUpPage() {
       );
       console.log(response);
       showSuccessToast("Signup successful", "Your account has been created.");
-      router.push("/login");
+      router.push("/");
       console.log("Signup successful:", response);
     } catch (error: any) {
       setLoading(false);
