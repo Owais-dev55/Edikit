@@ -170,13 +170,18 @@ export class AuthService {
     const token = await this.generateToken(userId);
     setAuthCookie(res, token, this.configService);
 
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production';
+
     return {
       userId,
       email: user.email,
       fullName: user.fullName,
       role: user.role,
       planType: user.planType,
-      token,
+      // Include token in response for Safari/iOS fallback (when cookies are blocked)
+      // Only in production where cross-domain cookies may be blocked
+      ...(isProduction && { token }),
     };
   }
 
@@ -189,6 +194,7 @@ export class AuthService {
     fullName: string;
     role: string;
     planType: string;
+    token?: string;
   }> {
     let user = await this.userService.findUserByGoogleId(profile.googleId);
 

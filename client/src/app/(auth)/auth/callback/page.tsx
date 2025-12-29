@@ -16,8 +16,27 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleCallback = async () => {
       const success = searchParams.get("success");
+      const token = searchParams.get("token");
 
       if (success === "true") {
+        if (token) {
+          localStorage.setItem("user_token", token);
+          console.log(
+            "🍪 Token received from OAuth - stored in localStorage for mobile fallback"
+          );
+        }
+
+        setTimeout(() => {
+          const hasCookie = document.cookie.includes("user_token=");
+          if (token) {
+            if (!hasCookie) {
+              console.log("🍪 Cookie blocked - using Bearer token fallback");
+            } else {
+              localStorage.removeItem("user_token");
+            }
+          }
+        }, 100);
+
         try {
           await refreshUser(dispatch);
           showSuccessToast("Successfully logged in!");

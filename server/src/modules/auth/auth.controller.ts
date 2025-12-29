@@ -97,14 +97,22 @@ export class AuthController {
       avatar?: string;
     }
     const profile = req.user as GoogleProfile;
-    await this.authService.handleGoogleAuth(profile, res);
+    const authData = await this.authService.handleGoogleAuth(profile, res);
 
     const frontendUrl = this.configService.get<string>(
       'FRONTEND_URL',
       'http://localhost:3000',
     );
 
-    return res.redirect(`${frontendUrl}/auth/callback?success=true`);
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production';
+
+    let redirectUrl = `${frontendUrl}/auth/callback?success=true`;
+    if (isProduction && 'token' in authData && authData.token) {
+      redirectUrl = `${frontendUrl}/auth/callback?success=true&token=${encodeURIComponent(authData.token)}`;
+    }
+
+    return res.redirect(redirectUrl);
   }
 
   @Public()
