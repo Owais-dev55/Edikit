@@ -36,14 +36,13 @@ const templateData: Record<string, any> = {
 };
 
 const CustomizePage = () => {
-  
   const params = useParams();
   const router = useRouter();
 
   const templateId = params.id as string;
   const template = templateData[templateId] || templateData["1"];
 
-   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -59,7 +58,7 @@ const CustomizePage = () => {
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-    useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       try {
         const { data } = await api.get("/auth/me", {
@@ -76,7 +75,7 @@ const CustomizePage = () => {
 
     checkAuth();
   }, []);
-  
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -89,7 +88,7 @@ const CustomizePage = () => {
     }
   };
 
-const handleGeneratePreview = () => {
+  const handleGeneratePreview = () => {
     if (!isLoggedIn) {
       showInfoToast("Please log in to generate preview");
       router.push("/login");
@@ -310,21 +309,21 @@ const handleGeneratePreview = () => {
               className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating Preview...
-                  </>
-                ) : isLoggedIn ? (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Generate Preview
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Login to Generate Preview
-                  </>
-                )}
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating Preview...
+                </>
+              ) : isLoggedIn ? (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate Preview
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Login to Generate Preview
+                </>
+              )}
             </button>
           </div>
 
