@@ -38,6 +38,7 @@ api.interceptors.request.use(
     const token = localStorage.getItem("user_token");
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log("🔑 Token added to request header");
     }
     return config;
   },
@@ -84,10 +85,23 @@ export const refreshUser = async (dispatch: AppDispatch) => {
       ? data.avatar
       : getInitialsAvatar(data.fullName);
     dispatch(setUser({ ...data, avatar }));
-  } catch (error) {
+  } catch (error: unknown) {
     console.log("❌/auth/me failed", error);
-    localStorage.removeItem("user_token");
-    dispatch(clearUser());
+
+    // Only remove token if we get a 401 (Unauthorized) - means token is invalid
+    // Don't remove on network errors or other issues
+    const status = (error as { response?: { status?: number } })?.response
+      ?.status;
+    if (status === 401) {
+      console.log("🔒 401 Unauthorized - removing invalid token");
+      dispatch(clearUser());
+    } else {
+      console.log(
+        "⚠️ Auth check failed but keeping token (might be network issue)"
+      );
+      // Keep token for retry, but clear user state
+      dispatch(clearUser());
+    }
   }
 };
 
