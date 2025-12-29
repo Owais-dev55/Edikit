@@ -30,7 +30,7 @@ async function bootstrap() {
       'Accept',
       'Origin',
     ],
-    exposedHeaders: ['Set-Cookie'],
+    // exposedHeaders: ['Set-Cookie'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });

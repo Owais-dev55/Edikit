@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Mail, Lock, User, LoaderCircle } from "lucide-react";
 import Image from "next/image";
 import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
-import { signupUser } from "@/lib/auth";
+import { signupUser, handleGoogleLogin, appleLogin } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 import { useDispatch } from "react-redux";
@@ -183,16 +183,18 @@ export default function SignUpPage() {
             {/* Social Sign Up */}
             <div className="space-y-3">
               <button
+                onClick={handleGoogleLogin}
                 type="button"
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
+                className="w-full cursor-pointer inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
                 <GoogleIcon size={20} />
                 Continue with Google
               </button>
 
               <button
+                onClick={() => appleLogin(dispatch)}
                 type="button"
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
+                className="w-full cursor-pointer inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
                 <AppleIcon />
                 Continue with Apple

@@ -19,6 +19,7 @@ function AuthCallbackContent() {
       const token = searchParams.get("token");
 
       if (success === "true") {
+        // Store token in localStorage immediately if provided (for mobile fallback)
         if (token) {
           localStorage.setItem("user_token", token);
           console.log(
@@ -26,27 +27,30 @@ function AuthCallbackContent() {
           );
         }
 
-        setTimeout(() => {
+        // Wait a bit to check if cookies were set, then adjust localStorage accordingly
+        setTimeout(async () => {
           const hasCookie = document.cookie.includes("user_token=");
           if (token) {
             if (!hasCookie) {
               console.log("🍪 Cookie blocked - using Bearer token fallback");
+              // Token already in localStorage, keep it
             } else {
+              console.log("🍪 Cookie works - removing token from localStorage");
               localStorage.removeItem("user_token");
             }
           }
-        }, 100);
 
-        try {
-          await refreshUser(dispatch);
-          showSuccessToast("Successfully logged in!");
-          router.push("/");
-        } catch (error) {
-          console.error("Failed to get user data:", error);
-
-          showErrorToast("Authentication failed", "Please try again");
-          router.push("/login");
-        }
+          // Call refreshUser after checking cookies to ensure token is properly set
+          try {
+            await refreshUser(dispatch);
+            showSuccessToast("Successfully logged in!");
+            router.push("/");
+          } catch (error) {
+            console.error("Failed to get user data:", error);
+            showErrorToast("Authentication failed", "Please try again");
+            router.push("/login");
+          }
+        }, token ? 150 : 50); // Longer delay if token exists to check cookies, shorter if not
       } else {
         showErrorToast("Authentication failed", "Please try again");
         router.push("/login");
