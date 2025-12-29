@@ -16,18 +16,31 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleCallback = async () => {
       const success = searchParams.get("success");
+      const token = searchParams.get("token");
 
       if (success === "true") {
-        try {
-          await refreshUser(dispatch);
-          showSuccessToast("Successfully logged in!");
-          router.push("/");
-        } catch (error) {
-          console.error("Failed to get user data:", error);
-
-          showErrorToast("Authentication failed", "Please try again");
-          router.push("/login");
+        if (token) {
+          localStorage.setItem("user_token", token);
+          console.log(
+            "💾 Token stored in localStorage:",
+            token.substring(0, 20) + "..."
+          );
         }
+
+        setTimeout(
+          async () => {
+            try {
+              await refreshUser(dispatch);
+              showSuccessToast("Successfully logged in!");
+              router.push("/");
+            } catch (error) {
+              console.error("Failed to get user data:", error);
+              showErrorToast("Authentication failed", "Please try again");
+              router.push("/login");
+            }
+          },
+          token ? 200 : 50
+        );
       } else {
         showErrorToast("Authentication failed", "Please try again");
         router.push("/login");

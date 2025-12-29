@@ -33,7 +33,7 @@ async function bootstrap() {
       'Origin',
       "stripe-signature",
     ],
-    exposedHeaders: ['Set-Cookie'],
+    // exposedHeaders: ['Set-Cookie'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });

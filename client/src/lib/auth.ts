@@ -38,6 +38,7 @@ api.interceptors.request.use(
     const token = localStorage.getItem("user_token");
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log("🔑 Token added to request header");
     }
     return config;
   },
@@ -57,17 +58,9 @@ export const loginUser = async (
   try {
     const { data } = await api.post("/auth/login", { email, password });
 
-    setTimeout(() => {
-      const hasCookie = document.cookie.includes("user_token=");
-
-      if (data.token) {
-        if (!hasCookie) {
-          localStorage.setItem("user_token", data.token);
-        } else {
-          localStorage.removeItem("user_token");
-        }
-      }
-    }, 100);
+    if (data.token) {
+      localStorage.setItem("user_token", data.token);
+    }
 
     const avatar = data.avatar?.startsWith("http")
       ? data.avatar
@@ -92,10 +85,23 @@ export const refreshUser = async (dispatch: AppDispatch) => {
       ? data.avatar
       : getInitialsAvatar(data.fullName);
     dispatch(setUser({ ...data, avatar }));
-  } catch (error) {
+  } catch (error: unknown) {
     console.log("❌/auth/me failed", error);
-    localStorage.removeItem("user_token");
-    dispatch(clearUser());
+
+    // Only remove token if we get a 401 (Unauthorized) - means token is invalid
+    // Don't remove on network errors or other issues
+    const status = (error as { response?: { status?: number } })?.response
+      ?.status;
+    if (status === 401) {
+      console.log("🔒 401 Unauthorized - removing invalid token");
+      dispatch(clearUser());
+    } else {
+      console.log(
+        "⚠️ Auth check failed but keeping token (might be network issue)"
+      );
+      // Keep token for retry, but clear user state
+      dispatch(clearUser());
+    }
   }
 };
 
@@ -113,15 +119,7 @@ export const signupUser = async (
   });
 
   if (data.token) {
-    setTimeout(() => {
-      const hasCookie = document.cookie.includes("user_token=");
-      if (!hasCookie) {
-        localStorage.setItem("user_token", data.token);
-        console.log("🍪 Cookie blocked - using Bearer token fallback");
-      } else {
-        localStorage.removeItem("user_token");
-      }
-    }, 100);
+    localStorage.setItem("user_token", data.token);
   }
 
   const avatar = data.avatar?.startsWith("http")
@@ -151,15 +149,7 @@ export const appleLogin = async (dispatch: AppDispatch) => {
   const data = await res.json();
 
   if (data.token) {
-    setTimeout(() => {
-      const hasCookie = document.cookie.includes("user_token=");
-      if (!hasCookie) {
-        localStorage.setItem("user_token", data.token);
-        console.log("🍪 Cookie blocked - using Bearer token fallback");
-      } else {
-        localStorage.removeItem("user_token");
-      }
-    }, 100);
+    localStorage.setItem("user_token", data.token);
   }
 
   if (res.ok && data) {
