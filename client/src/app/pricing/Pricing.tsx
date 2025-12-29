@@ -75,8 +75,6 @@ const Pricing = () => {
                     >
                       {plan.cta}
                     </button>
-                    {JSON.stringify(user)}
-
                     {/* Features List */}
                     <div className="pt-6 border-t border-border">
                       <ul className="space-y-3">
