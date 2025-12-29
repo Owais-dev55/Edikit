@@ -63,8 +63,17 @@ export const loginUser = async (
       if (data.token) {
         if (!hasCookie) {
           localStorage.setItem("user_token", data.token);
+          console.log("🍪 Cookie blocked - using Bearer token fallback");
         } else {
-          localStorage.removeItem("user_token");
+          // In production, keep token as backup for mobile browsers (Brave, Safari) that may block cookies later
+          const isProduction = process.env.NODE_ENV === "production";
+          if (isProduction) {
+            // Keep token as backup - don't remove it
+            console.log("🍪 Cookie detected - keeping token as backup for mobile browsers");
+          } else {
+            // In development, cookies should work reliably, so we can remove token
+            localStorage.removeItem("user_token");
+          }
         }
       }
     }, 100);
@@ -119,7 +128,15 @@ export const signupUser = async (
         localStorage.setItem("user_token", data.token);
         console.log("🍪 Cookie blocked - using Bearer token fallback");
       } else {
-        localStorage.removeItem("user_token");
+        // In production, keep token as backup for mobile browsers (Brave, Safari) that may block cookies later
+        const isProduction = process.env.NODE_ENV === "production";
+        if (isProduction) {
+          // Keep token as backup - don't remove it
+          console.log("🍪 Cookie detected - keeping token as backup for mobile browsers");
+        } else {
+          // In development, cookies should work reliably, so we can remove token
+          localStorage.removeItem("user_token");
+        }
       }
     }, 100);
   }

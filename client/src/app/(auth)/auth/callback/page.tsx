@@ -20,28 +20,20 @@ function AuthCallbackContent() {
 
       if (success === "true") {
         // Store token in localStorage immediately if provided (for mobile fallback)
+        // Keep it permanently as backup - don't remove it even if cookies appear to work
+        // Brave and other mobile browsers may block cookies later, so we need the token as fallback
         if (token) {
           localStorage.setItem("user_token", token);
           console.log(
-            "🍪 Token received from OAuth - stored in localStorage for mobile fallback"
+            "🍪 Token received from OAuth - stored in localStorage as permanent backup"
           );
         }
 
-        // Wait a bit to check if cookies were set, then adjust localStorage accordingly
+        // Wait a bit for cookies to be set, then authenticate
         setTimeout(async () => {
-          const hasCookie = document.cookie.includes("user_token=");
-          if (token) {
-            if (!hasCookie) {
-              console.log("🍪 Cookie blocked - using Bearer token fallback");
-              // Token already in localStorage, keep it
-            } else {
-              console.log("🍪 Cookie works - removing token from localStorage");
-              localStorage.removeItem("user_token");
-            }
-          }
-
-          // Call refreshUser after checking cookies to ensure token is properly set
           try {
+            // Attempt to refresh user - Axios interceptor will use cookies first if available,
+            // then fall back to token from localStorage if cookies are blocked
             await refreshUser(dispatch);
             showSuccessToast("Successfully logged in!");
             router.push("/");
@@ -50,7 +42,7 @@ function AuthCallbackContent() {
             showErrorToast("Authentication failed", "Please try again");
             router.push("/login");
           }
-        }, token ? 150 : 50); // Longer delay if token exists to check cookies, shorter if not
+        }, token ? 200 : 50); // Longer delay if token exists to allow cookie check
       } else {
         showErrorToast("Authentication failed", "Please try again");
         router.push("/login");
