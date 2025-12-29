@@ -21,6 +21,10 @@ function AuthCallbackContent() {
       if (success === "true") {
         if (token) {
           localStorage.setItem("user_token", token);
+          console.log(
+            "💾 Token stored in localStorage:",
+            token.substring(0, 20) + "..."
+          );
         }
 
         setTimeout(
