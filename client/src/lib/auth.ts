@@ -57,26 +57,9 @@ export const loginUser = async (
   try {
     const { data } = await api.post("/auth/login", { email, password });
 
-    setTimeout(() => {
-      const hasCookie = document.cookie.includes("user_token=");
-
-      if (data.token) {
-        if (!hasCookie) {
-          localStorage.setItem("user_token", data.token);
-          console.log("🍪 Cookie blocked - using Bearer token fallback");
-        } else {
-          // In production, keep token as backup for mobile browsers (Brave, Safari) that may block cookies later
-          const isProduction = process.env.NODE_ENV === "production";
-          if (isProduction) {
-            // Keep token as backup - don't remove it
-            console.log("🍪 Cookie detected - keeping token as backup for mobile browsers");
-          } else {
-            // In development, cookies should work reliably, so we can remove token
-            localStorage.removeItem("user_token");
-          }
-        }
-      }
-    }, 100);
+    if (data.token) {
+      localStorage.setItem("user_token", data.token);
+    }
 
     const avatar = data.avatar?.startsWith("http")
       ? data.avatar
@@ -122,23 +105,7 @@ export const signupUser = async (
   });
 
   if (data.token) {
-    setTimeout(() => {
-      const hasCookie = document.cookie.includes("user_token=");
-      if (!hasCookie) {
-        localStorage.setItem("user_token", data.token);
-        console.log("🍪 Cookie blocked - using Bearer token fallback");
-      } else {
-        // In production, keep token as backup for mobile browsers (Brave, Safari) that may block cookies later
-        const isProduction = process.env.NODE_ENV === "production";
-        if (isProduction) {
-          // Keep token as backup - don't remove it
-          console.log("🍪 Cookie detected - keeping token as backup for mobile browsers");
-        } else {
-          // In development, cookies should work reliably, so we can remove token
-          localStorage.removeItem("user_token");
-        }
-      }
-    }, 100);
+    localStorage.setItem("user_token", data.token);
   }
 
   const avatar = data.avatar?.startsWith("http")
@@ -168,15 +135,7 @@ export const appleLogin = async (dispatch: AppDispatch) => {
   const data = await res.json();
 
   if (data.token) {
-    setTimeout(() => {
-      const hasCookie = document.cookie.includes("user_token=");
-      if (!hasCookie) {
-        localStorage.setItem("user_token", data.token);
-        console.log("🍪 Cookie blocked - using Bearer token fallback");
-      } else {
-        localStorage.removeItem("user_token");
-      }
-    }, 100);
+    localStorage.setItem("user_token", data.token);
   }
 
   if (res.ok && data) {
