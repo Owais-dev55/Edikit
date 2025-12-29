@@ -6,7 +6,9 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule , {
+    rawBody: true,
+  });
 
   const port = process.env.PORT || 3000;
   const nodeEnv = process.env.NODE_ENV || 'development';
@@ -29,6 +31,7 @@ async function bootstrap() {
       'X-Requested-With',
       'Accept',
       'Origin',
+      "stripe-signature",
     ],
     exposedHeaders: ['Set-Cookie'],
     preflightContinue: false,
