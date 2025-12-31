@@ -39,8 +39,8 @@ export default function Hero() {
                     .
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground text-pretty leading-relaxed">
-                    Create professional motion graphics without complexity. Choose from stunning pre-designed templates,
-                    customize in seconds, and export videos ready to captivate your audience.
+                    Design professional motion graphics with ease using stunning templates pre-designed templates.
+                    Customize them instantly and export hight-quality videos that captivate your audience.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 pt-2">

@@ -66,10 +66,10 @@ const Pricing = () => {
                     {/* CTA Button */}
                     <button
                        onClick={() => handlePayment(plan.id, user?.userId || user?.id)}
-                        className={`w-full px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
+                        className={`w-full px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer focus:bg-primary/50 ${
                         plan.popular
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                          : "bg-secondary text-secondary-foreground hover:bg-primary/80"
                       }`}
                     >
                       {plan.cta}

@@ -46,7 +46,8 @@ const CustomizePage = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
-
+  
+  
   const [formData, setFormData] = useState({
     headline: "Your Product Name",
     subheadline: "Launching Soon",
@@ -55,6 +56,11 @@ const CustomizePage = () => {
     secondaryColor: "#6366f1",
     logo: null as File | null,
   });
+  
+  const isFieldsEmpty =
+    !formData.headline ||
+    !formData.subheadline ||
+    !formData.description;
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
@@ -96,7 +102,6 @@ const CustomizePage = () => {
     }
 
     setIsGenerating(true);
-
     setTimeout(() => {
       setGeneratedVideo(
         "/placeholder.svg?height=480&width=854&text=Generated+Video+Preview"
@@ -308,7 +313,7 @@ const CustomizePage = () => {
             ) : (
               <button
                 onClick={handleGeneratePreview}
-                disabled={isGenerating || authLoading}
+                disabled={isGenerating || authLoading || isFieldsEmpty}
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isGenerating ? (

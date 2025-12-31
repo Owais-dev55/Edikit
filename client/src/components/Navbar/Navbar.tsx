@@ -67,7 +67,7 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -186,7 +186,7 @@ const Navbar = () => {
                 <div>
                   <Link
                     href="/login"
-                    className="px-3 py-2 text-sm font-medium rounded-lg hover:bg-accent transition-colors"
+                    className="px-3 py-2 text-md font-medium rounded-lg hover:bg-accent transition-colors"
                   >
                     Log in
                   </Link>
