@@ -6,8 +6,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 
 const Pricing = () => {
-  const { user } = useSelector((state: RootState) => state.user);
-
+  const user = useSelector((state: RootState) => state.user.user);
   return (
     <div className="min-h-screen bg-background">
       <main>
@@ -66,8 +65,8 @@ const Pricing = () => {
 
                     {/* CTA Button */}
                     <button
-                      onClick={() => handlePayment(plan.id, user?.id)}
-                      className={`w-full px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
+                       onClick={() => handlePayment(plan.id, user?.userId || user?.id)}
+                        className={`w-full px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
                         plan.popular
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
