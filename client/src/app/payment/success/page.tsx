@@ -4,6 +4,9 @@ import { CheckCircle } from "lucide-react"
 import Loader from "@/components/Overlay/Loader";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { refreshUser } from "@/lib/auth";
+import type { AppDispatch } from "@/redux/store";
 
 // Component that uses useSearchParams
 function SuccessContent() {
@@ -12,6 +15,7 @@ function SuccessContent() {
   const plan = searchParams.get('plan');
   const [loading, setLoading] = useState(true);
   const [sessionData, setSessionData] = useState<any>(null);
+  const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
     // Handle free plan
@@ -32,6 +36,13 @@ function SuccessContent() {
       setLoading(false);
     }
   }, [sessionId, plan]);
+  
+  useEffect(() => {
+    // Refresh user profile so planType is up to date without a manual reload
+    if (sessionData?.success) {
+      refreshUser(dispatch);
+    }
+  }, [sessionData, dispatch]);
 
   const verifySession = async (sessionId: string) => {
   

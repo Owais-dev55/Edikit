@@ -4,6 +4,7 @@ export const plans = [
   {
     id: "prod_TffitWtEKT88s6",
     name: "Free",
+    planType: "FREE",
     price: "$0",
     period: "forever",
     description: "Perfect for trying out Edikit",
@@ -14,6 +15,7 @@ export const plans = [
   {
     id: "prod_Tffkh0QPN6G92B",
     name: "Basic",
+    planType: "BASIC",
     price: "$5.99",
     period: "per month",
     description: "For professionals and content creators",
@@ -29,6 +31,7 @@ export const plans = [
   {
     id: "prod_TffnEJPkjRMHpY",
     name: "Pro",
+    planType: "PRO",
     price: "$39.99",
     period: "per month",
     description: "For teams and agencies",

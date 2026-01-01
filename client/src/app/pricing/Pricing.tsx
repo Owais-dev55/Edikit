@@ -64,16 +64,27 @@ const Pricing = () => {
                     </div>
 
                     {/* CTA Button */}
-                    <button
-                       onClick={() => handlePayment(plan.id, user?.userId || user?.id)}
-                        className={`w-full px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer focus:bg-primary/50 ${
-                        plan.popular
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-secondary text-secondary-foreground hover:bg-primary/80"
-                      }`}
-                    >
-                      {plan.cta}
-                    </button>
+                    {(() => {
+                      const isCurrentPlan:boolean | null | undefined =
+                        user && user.planType === plan.planType;
+
+                      return (
+                        <button
+                          disabled={isCurrentPlan ?? undefined}
+                          onClick={() => {
+                            if (isCurrentPlan) return;
+                            handlePayment(plan.id, user?.userId || user?.id);
+                          }}
+                          className={`w-full px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer focus:bg-primary/50 disabled:opacity-60 disabled:cursor-not-allowed ${
+                            plan.popular
+                              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                              : "bg-secondary text-secondary-foreground hover:bg-primary/80"
+                          }`}
+                        >
+                          {isCurrentPlan ? "Current Plan" : plan.cta}
+                        </button>
+                      );
+                    })()}
                     {/* Features List */}
                     <div className="pt-6 border-t border-border">
                       <ul className="space-y-3">
