@@ -40,12 +40,12 @@ export const handlePayment = (planId: string, userId?: string) => {
   }
 
   if (!plan) {
-    console.error(`Invalid plan ID: ${planId}`);
+    console.log(`Invalid plan ID: ${planId}`);
     return;
   }
 
   if (!userId) {
-    console.error("User not logged in");
+    console.log("User not logged in");
     showErrorToast("Please log in to proceed with the payment.");
     return;
   }
