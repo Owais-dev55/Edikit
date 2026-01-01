@@ -37,6 +37,19 @@ export class StripeController {
             throw new BadRequestException('Invalid or expired session');
         }
     }
+    
+    @Post('cancel-subscription')
+    async cancelSubscription(@Body() body: { userId: string }) {
+        if (!body.userId) {
+            throw new BadRequestException('User ID is required');
+        }
+
+        try {
+            return await this.stripeService.cancelSubscription(body.userId);
+        } catch (error) {
+            throw new BadRequestException('Unable to cancel subscription');
+        }
+    }
      @Post('webhook')
     async handleWebhook(
         @Headers('stripe-signature') signature: string,

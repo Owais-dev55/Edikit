@@ -10,13 +10,15 @@ import { useSelector, useDispatch } from "react-redux";
 import type { RootState } from "@/redux/store";
 import { getInitialsAvatar } from "@/utils/getInitialsAvatar";
 import { logoutUser } from "@/lib/auth";
+import { cancelSubscription } from "@/lib/payment";
 import type { AppDispatch } from "@/redux/store";
-import { showSuccessToast } from "@/components/Toast/showToast";
+import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [minLoadingTime, setMinLoadingTime] = useState(true);
+  const [isCanceling, setIsCanceling] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -63,6 +65,20 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
     showSuccessToast("Logged out successfully");
     router.push("/");
+  };
+
+  const handleCancelPlan = async () => {
+    if (!user?.id && !user?.userId) return;
+    setIsCanceling(true);
+    try {
+      await cancelSubscription(user.userId || user.id, dispatch);
+      showSuccessToast("Plan cancelled and downgraded to Free");
+      setIsUserMenuOpen(false);
+    } catch {
+      showErrorToast("Could not cancel plan. Please try again.");
+    } finally {
+      setIsCanceling(false);
+    }
   };
 
   return (
@@ -160,14 +176,22 @@ const Navbar = () => {
                             Upgrade Plan
                           </Link>
                         ) : (
-                          <Link
-                            href="/pricing"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 mx-2 my-2 text-sm font-medium rounded-lg border border-border hover:bg-accent transition-colors"
-                            style={{ width: "calc(100% - 1rem)" }}
-                          >
-                            Manage Plan
-                          </Link>
+                          <div className="flex flex-col gap-2 px-2">
+                            <Link
+                              href="/pricing"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border hover:bg-accent transition-colors"
+                            >
+                              Manage Plan
+                            </Link>
+                            <button
+                              onClick={handleCancelPlan}
+                              disabled={isCanceling}
+                              className="w-full cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {isCanceling ? "Cancelling..." : "Cancel Plan"}
+                            </button>
+                          </div>
                         )}
 
                         {/* Logout Button */}
@@ -281,13 +305,25 @@ const Navbar = () => {
 
                   {/* Manage Subscription for paid users */}
                   {(user.planType === "BASIC" || user.planType === "PRO") && (
-                    <Link
-                      href="/pricing"
-                      onClick={() => setIsOpen(false)}
-                      className="mx-4 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-accent text-center"
-                    >
-                      Manage Plan
-                    </Link>
+                    <>
+                      <Link
+                        href="/pricing"
+                        onClick={() => setIsOpen(false)}
+                        className="mx-4 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-accent text-center"
+                      >
+                        Manage Plan
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleCancelPlan();
+                          setIsOpen(false);
+                        }}
+                        disabled={isCanceling}
+                        className="mx-4 px-3 py-1.5 text-xs font-medium rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isCanceling ? "Cancelling..." : "Cancel Plan"}
+                      </button>
+                    </>
                   )}
 
                   <button

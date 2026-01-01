@@ -68,10 +68,10 @@ export class UserService {
     userId: string,
     data: {
       planType: PlanType;
-      stripeCustomerId?: string;
-      stripeSubscriptionId?: string;
-      stripePriceId?: string;
-      stripeCurrentPeriodEnd?: Date;
+      stripeCustomerId?: string | null;
+      stripeSubscriptionId?: string | null;
+      stripePriceId?: string | null;
+      stripeCurrentPeriodEnd?: Date | null;
     },
   ) {
     return await this.prisma.user.update({

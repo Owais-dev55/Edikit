@@ -115,6 +115,8 @@ export class StripeService {
             console.error('Error verifying session:', error);
             throw error;
         }
+
+        
     }
 
     /**
@@ -357,4 +359,23 @@ private async handleSubscriptionUpdated(subscription: Stripe.Subscription) {
             return PlanType.FREE;  // $0 = FREE
         }
     }
+    async cancelSubscription(userId: string) {
+            const user = await this.userService.findOne(userId);
+            if (!user.stripeSubscriptionId) {
+                throw new Error('No active subscription to cancel');
+            }
+
+            // Cancel the Stripe subscription
+            await this.stripe.subscriptions.cancel(user.stripeSubscriptionId);
+
+            // Reset user subscription fields and downgrade to FREE
+            await this.userService.updateSubscription(userId, {
+                planType: PlanType.FREE,
+                stripeSubscriptionId: null,
+                stripePriceId: null,
+                stripeCurrentPeriodEnd: null,
+            });
+
+            return { success: true };
+        }
 }

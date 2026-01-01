@@ -1,6 +1,8 @@
 import { showErrorToast } from "@/components/Toast/showToast";
 import { baseUrl } from "@/utils/constant";
 import axios from "axios";
+import { refreshUser } from "./auth";
+import type { AppDispatch } from "@/redux/store";
 
 const pricingPlans: Record<
   string,
@@ -67,3 +69,24 @@ export const handlePayment = (planId: string, userId?: string) => {
       console.error("Error creating checkout session:", error);
     });
 };
+
+  export const cancelSubscription = async (
+    userId: string,
+    dispatch?: AppDispatch,
+  ) => {
+    if (!userId) {
+      showErrorToast("User not logged in");
+      return;
+    }
+
+    try {
+      await axios.post(`${baseUrl}/stripe/cancel-subscription`, { userId });
+      if (dispatch) {
+        await refreshUser(dispatch);
+      }
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      showErrorToast("Could not cancel subscription. Please try again.");
+      throw error;
+    }
+  };
