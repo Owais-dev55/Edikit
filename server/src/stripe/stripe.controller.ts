@@ -1,6 +1,6 @@
-import { Controller, Post, Body, Get, BadRequestException, Query } from "@nestjs/common";
+import { Controller, Post, Body, Get, BadRequestException, Query, Headers, Req } from "@nestjs/common";
 import { StripeService } from "./stripe.service";
-
+import type { RawBodyRequest } from "@nestjs/common";
 @Controller('stripe')
 export class StripeController {
     constructor(private readonly stripeService: StripeService) {}
@@ -35,6 +35,27 @@ export class StripeController {
             return await this.stripeService.verifySession(sessionId);
         } catch (error) {
             throw new BadRequestException('Invalid or expired session');
+        }
+    }
+     @Post('webhook')
+    async handleWebhook(
+        @Headers('stripe-signature') signature: string,
+        @Req() request: RawBodyRequest<Request>,
+    ) {
+        if (!signature) {
+            throw new BadRequestException('Missing stripe-signature header');
+        }
+
+        if (!request.rawBody) {
+        throw new BadRequestException('Missing request body');
+    }
+
+        try {
+            await this.stripeService.handleWebhook(signature, request.rawBody);
+            return { received: true };
+        } catch (error) {
+            console.error('Webhook error:', error.message);
+            throw new BadRequestException(`Webhook Error: ${error.message}`);
         }
     }
 }
