@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule , {
+  const app = await NestFactory.create(AppModule, {
     rawBody: true,
   });
 
@@ -31,9 +31,9 @@ async function bootstrap() {
       'X-Requested-With',
       'Accept',
       'Origin',
-      "stripe-signature",
+      'stripe-signature',
     ],
-    // exposedHeaders: ['Set-Cookie'],
+    exposedHeaders: ['Set-Cookie'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });
