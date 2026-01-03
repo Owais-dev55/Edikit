@@ -140,7 +140,7 @@ export default function SignUpPage() {
               <div className="flex items-start gap-2 pt-2">
                 <label
                   htmlFor="terms"
-                  className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
+                  className="text-sm text-muted-foreground leading-relaxed"
                 >
                   I agree to the{" "}
                   <Link href="#" className="text-primary hover:underline">
@@ -191,14 +191,14 @@ export default function SignUpPage() {
                 Continue with Google
               </button>
 
-              <button
+              {/* <button
                 onClick={() => appleLogin(dispatch)}
                 type="button"
                 className="w-full cursor-pointer inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border bg-background text-foreground font-medium hover:bg-accent transition-colors"
               >
                 <AppleIcon />
                 Continue with Apple
-              </button>
+              </button> */}
             </div>
 
             {/* Login Link */}
