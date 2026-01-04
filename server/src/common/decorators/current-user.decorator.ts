@@ -10,8 +10,16 @@ interface RequestWithUser extends Request {
 }
 
 export const CurrentUser = createParamDecorator(
-  (data: unknown, ctx: ExecutionContext): JwtUser => {
+  (data: string | undefined, ctx: ExecutionContext): JwtUser | string => {
     const request = ctx.switchToHttp().getRequest<RequestWithUser>();
-    return request.user;
+    const user = request.user;
+    
+    // If a property name is provided, return that property
+    if (data && typeof data === 'string') {
+      return user[data as keyof JwtUser] as string;
+    }
+    
+    // Otherwise return the entire user object
+    return user;
   },
 );

@@ -9,6 +9,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { KeepAliveService } from './common/services/keep-alive.service';
 import { StripeModule } from './stripe/stripe.module';
+import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
+import { RenderModule } from './modules/render/render.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { StripeModule } from './stripe/stripe.module';
     ScheduleModule.forRoot(),
     HttpModule,
     StripeModule,
+    CloudinaryModule,
+    RenderModule,
   ],
   controllers: [AppController],
   providers: [AppService, KeepAliveService],
