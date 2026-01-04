@@ -49,6 +49,7 @@ agent
 # temp directory
 .temp
 .tmp
+Templates
 
 # Runtime data
 pids

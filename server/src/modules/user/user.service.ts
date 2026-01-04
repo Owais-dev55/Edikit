@@ -63,7 +63,7 @@ export class UserService {
     });
     return result && true;
   }
-  
+
   async updateSubscription(
     userId: string,
     data: {
