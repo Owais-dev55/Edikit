@@ -62,7 +62,7 @@ export const CustomToast = ({
         </div>
         <button
           onClick={() => toast.dismiss(t.id)}
-          className="ml-3 shrink-0 rounded-full h-6 w-6 flex items-center justify-center text-white/90 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
+          className="ml-3 shrink-0 rounded-full h-6 w-6 flex items-center justify-center text-white/90 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer"
           aria-label="Dismiss toast"
         >
           <span aria-hidden="true" className="text-base leading-none">×</span>
