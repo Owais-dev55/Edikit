@@ -1,64 +1,104 @@
-import Image from "next/image";
+'use client';
+import { useRef, useState } from "react";
 import Link from "next/link";
+import { Play } from "lucide-react";
+import Image from "next/image";
 
 interface TemplateCardProps {
   id: number;
-  title: string;
+  name: string;
+  description: string;
   category: string;
-  duration: string;
   thumbnail: string;
+  previewUrl: string;
 }
 
 const TemplateCard = ({
   id,
-  title,
+  name,
+  description,
   category,
-  duration,
   thumbnail,
+  previewUrl,
 }: TemplateCardProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (videoRef.current && isVideoLoaded) {
+      videoRef.current.play();
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
   return (
     <div
-      key={id}
       className="group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Thumbnail */}
-      <div className="relative aspect-4/3 overflow-hidden bg-muted">
-        <Image
-          src={thumbnail || "/placeholder.svg"}
-          alt={title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          width={200}
-          height={200}
+      {/* Preview Container - Fixed Height */}
+      <div className="relative h-64 overflow-hidden bg-muted">
+        {/* Static Thumbnail */}
+        {!isHovering && (
+          <Image
+            src={thumbnail}
+            alt={name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
+        )}
+
+        {/* Video (hidden until hover) */}
+        <video
+          ref={videoRef}
+          src={previewUrl}
+          className={`h-full w-full object-cover transition-opacity duration-300 ${
+            isHovering ? "opacity-100" : "opacity-0"
+          }`}
+          loop
+          muted
+          playsInline
+          onLoadedData={() => setIsVideoLoaded(true)}
         />
 
-        {/* Hover Overlay */}
-        {/* <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary">
-                        <Play className="h-6 w-6 fill-primary-foreground text-primary-foreground ml-0.5" />
-                      </div>
-                    </div> */}
+        {/* Play Icon Overlay */}
+        {!isHovering && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm transition-transform group-hover:scale-110">
+              <Play className="h-5 w-5 fill-primary-foreground text-primary-foreground ml-0.5" />
+            </div>
+          </div>
+        )}
 
         {/* Duration Badge */}
-        <span className="absolute right-3 top-3 rounded-full bg-background/80 px-3 py-1 text-xs backdrop-blur">
-          {duration}
-        </span>
       </div>
 
       {/* Content */}
-      <div className="space-y-2 p-4">
+      <div className="space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold leading-tight transition-colors group-hover:text-primary">
-            {title}
+          <h3 className="font-semibold leading-tight transition-colors group-hover:text-primary line-clamp-1">
+            {name}
           </h3>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs whitespace-nowrap">
             {category}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Customizable motion template ready to render.
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {description}
         </p>
         <Link href={`/customize/${id}`}>
-          <button className="btn btn-primary w-full h-10 rounded-2xl mt-2 bg-primary/90 hover:bg-primary cursor-pointer">
+          <button className="w-full h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer transition-colors font-medium text-sm">
             Customize
           </button>
         </Link>

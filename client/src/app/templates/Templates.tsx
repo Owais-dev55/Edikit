@@ -2,13 +2,8 @@
 
 import TemplateCard from "@/components/Overlay/TemplateCard";
 import {  templates } from "@/utils/constant";
-import Image from "next/image";
-import Link from "next/link";
-
 
 const Templates = () => {
-
-
   return (
     <section className="relative py-20">
       <div className="container mx-auto px-4">
@@ -53,7 +48,7 @@ const Templates = () => {
           {/* Templates Grid */}
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ">
             {templates.map((template) => (
-              <TemplateCard key={template.id} {...template} />
+              <TemplateCard key={template.id} {...template} thumbnail={template.thumbnail || template.previewUrl} />
             ))}
           </div>
         </div>

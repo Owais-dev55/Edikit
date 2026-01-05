@@ -1,22 +1,50 @@
-import Image from "next/image";
+"use client";
+import { Play } from "lucide-react";
+import Image, { StaticImageData } from "next/image";
 import Link from "next/link";
+import { useRef, useState } from "react";
 
 interface TemplateCardProps {
   id: number;
-  title: string;
-  thumbnail: string;
+  name: string;
+  thumbnail?: string | StaticImageData;
   category: string;
   isFeatured?: boolean;
+  previewUrl: string;
 }
 
 export default function Card({
   id,
-  title,
+  name,
   thumbnail,
   isFeatured = false,
+  previewUrl,
 }: TemplateCardProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (videoRef.current && isVideoLoaded) {
+      videoRef.current.play();
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
   return (
-    <Link href={`/customize/${id}`}>
+    <Link
+      href={`/customize/${id}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div
         className={`group h-full rounded-2xl overflow-hidden border transition-all duration-300 cursor-pointer ${
           isFeatured
@@ -25,19 +53,41 @@ export default function Card({
         }`}
       >
         {/* Thumbnail */}
-        <div
-          className={`relative w-full bg-muted overflow-hidden ${
-            isFeatured ? "aspect-video h-80" : "aspect-video h-56"
-          }`}
-        >
-          <Image
-            src={thumbnail || "/placeholder.svg"}
-            alt={title}
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-300"
-            unoptimized
+        <div className="relative h-64 overflow-hidden bg-muted">
+          {/* Static Thumbnail */}
+          {!isHovering && thumbnail && (
+            <Image
+              src={thumbnail}
+              alt={name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          )}
+
+          {/* Video (hidden until hover) */}
+          <video
+            ref={videoRef}
+            src={previewUrl}
+            className={`h-full w-full object-cover transition-opacity duration-300 ${
+              isHovering ? "opacity-100" : "opacity-0"
+            }`}
+            loop
+            muted
+            playsInline
+            onLoadedData={() => setIsVideoLoaded(true)}
           />
-          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+          {/* Play Icon Overlay */}
+          {!isHovering && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm transition-transform group-hover:scale-110">
+                <Play className="h-5 w-5 fill-primary-foreground text-primary-foreground ml-0.5" />
+              </div>
+            </div>
+          )}
+
+          {/* Duration Badge */}
         </div>
 
         {/* Content */}
@@ -48,7 +98,7 @@ export default function Card({
                 isFeatured ? "text-2xl" : "text-lg"
               }`}
             >
-              {title}
+              {name}
             </h3>
           </div>
 
