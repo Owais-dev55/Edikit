@@ -230,7 +230,7 @@ export const templates: Template[] = [
     id: 10,
     name: "Animation 10",
     description: "Four Icons & Text",
-    previewUrl: "/previews/animation -0.mp4",
+    previewUrl: "/previews/animation-10.mp4",
     thumbnail: "/previews/animation 10.png",
     category: "Social Media",
     fields: {
@@ -246,7 +246,7 @@ export const templates: Template[] = [
     id: 11,
     name: "Animation 11",
     description: "Social Media Style",
-    previewUrl: "/previews/animation -1.mp4",
+    previewUrl: "/previews/animation-11.mp4",
     thumbnail: "/previews/animation 11.png",
     category: "Social Media",
     fields: {
