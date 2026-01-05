@@ -8,7 +8,7 @@ export const plans = [
     price: "$0",
     period: "forever",
     description: "Perfect for trying out Edikit",
-    features: ["3 video renders per month", "720p resolution", ".mp4 format"],
+    features: ["3 video renders per month", "720p resolution",-".mp4 format"],
     cta: "Start Free Trial",
     popular: false,
   },
@@ -22,7 +22,7 @@ export const plans = [
     features: [
       "50 video renders per month",
       "1080p HD resolution",
-      ".mp4 and .mov formats",
+    -".mp4 and .mov formats",
       "with transparent background",
     ],
     cta: "Select Plan",
@@ -38,7 +38,7 @@ export const plans = [
     features: [
       "500 video renders per month",
       "4K resolution",
-      ".mp4 and .mov formats",
+    -".mp4 and .mov formats",
       "with transparent background",
     ],
     cta: "Select Plan",
@@ -102,7 +102,7 @@ export const templates: Template[] = [
     id: 1,
     name: "Animation 1",
     description: "Image & Text Template",
-    previewUrl: "/previews/animation 1.mp4",
+    previewUrl: "/previews/animation-1.mp4",
     thumbnail: "/previews/animation 1.png", // Use video as thumbnail
     category: "Social Media",
     fields: {
@@ -117,7 +117,7 @@ export const templates: Template[] = [
     id: 2,
     name: "Animation 2",
     description: "Icon & Text Template",
-    previewUrl: "/previews/animation 2.mp4",
+    previewUrl: "/previews/animation-2.mp4",
     thumbnail: "/previews/animation 2.png",
     category: "Social Media",
     fields: {
@@ -131,7 +131,7 @@ export const templates: Template[] = [
     id: 3,
     name: "Animation 3",
     description: "Icon & Text Template",
-    previewUrl: "/previews/animation 3.mp4",
+    previewUrl: "/previews/animation-3.mp4",
     thumbnail: "/previews/animation 3.png",
     category: "Social Media",
     fields: {
@@ -145,7 +145,7 @@ export const templates: Template[] = [
     id: 4,
     name: "Animation 4",
     description: "Multiple Icons & Text",
-    previewUrl: "/previews/animation 4.mp4",
+    previewUrl: "/previews/animation-4.mp4",
     thumbnail: "/previews/animation 4.png",
     category: "Social Media",
     fields: {
@@ -160,7 +160,7 @@ export const templates: Template[] = [
     id: 5,
     name: "Animation 5",
     description: "Two Icons & Text",
-    previewUrl: "/previews/animation 5.mp4",
+    previewUrl: "/previews/animation-5.mp4",
     thumbnail: "/previews/animation 5.png",
     category: "Social Media",
     fields: {
@@ -174,7 +174,7 @@ export const templates: Template[] = [
     id: 6,
     name: "Animation 6",
     description: "Video & Text Template",
-    previewUrl: "/previews/animation 6.mp4",
+    previewUrl: "/previews/animation-6.mp4",
     thumbnail: "/previews/animation 6.png",
     category: "Video",
     fields: {
@@ -188,7 +188,7 @@ export const templates: Template[] = [
     id: 7,
     name: "Animation 7",
     description: "Simple Text Template",
-    previewUrl: "/previews/animation 7.mp4",
+    previewUrl: "/previews/animation-7.mp4",
     thumbnail: "/previews/animation 7.png",
     category: "Social Media",
     fields: {
@@ -201,7 +201,7 @@ export const templates: Template[] = [
     id: 8,
     name: "Animation 8",
     description: "Product Showcase",
-    previewUrl: "/previews/animation 8.mp4",
+    previewUrl: "/previews/animation-8.mp4",
     thumbnail: "/previews/animation 8.png",
     category: "E-commerce",
     fields: {
@@ -216,7 +216,7 @@ export const templates: Template[] = [
     id: 9,
     name: "Animation 9",
     description: "Triple Text Template",
-    previewUrl: "/previews/animation 9.mp4",
+    previewUrl: "/previews/animation-9.mp4",
     thumbnail: "/previews/animation 9.png",
     category: "Social Media",
     fields: {
@@ -230,7 +230,7 @@ export const templates: Template[] = [
     id: 10,
     name: "Animation 10",
     description: "Four Icons & Text",
-    previewUrl: "/previews/animation 10.mp4",
+    previewUrl: "/previews/animation -0.mp4",
     thumbnail: "/previews/animation 10.png",
     category: "Social Media",
     fields: {
@@ -246,7 +246,7 @@ export const templates: Template[] = [
     id: 11,
     name: "Animation 11",
     description: "Social Media Style",
-    previewUrl: "/previews/animation 11.mp4",
+    previewUrl: "/previews/animation -1.mp4",
     thumbnail: "/previews/animation 11.png",
     category: "Social Media",
     fields: {
