@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -9,12 +9,14 @@ import {
   X,
   CheckCircle,
   AlertCircle,
+  Play,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { templates } from "@/utils/constant";
 import api from "@/lib/auth";
 import { showInfoToast, showErrorToast } from "@/components/Toast/showToast";
+import Image from "next/image";
 
 interface FormDataState {
   [key: string]: string | File | null;
@@ -32,6 +34,7 @@ const CustomizePage = () => {
   const params = useParams();
   const router = useRouter();
   const templateId = parseInt(params.id as string);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const template = templates.find((t) => t.id === templateId);
 
@@ -43,6 +46,12 @@ const CustomizePage = () => {
   const [formData, setFormData] = useState<FormDataState>({});
   const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
   const [uploadedAssets, setUploadedAssets] = useState<{ [key: string]: string }>({});
+  
+  // Video preview states
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   // Redirect if template not found
   useEffect(() => {
@@ -104,10 +113,67 @@ const CustomizePage = () => {
       } catch (error) {
         console.error("Failed to poll job status:", error);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [renderJob]);
+
+  // Cleanup video on unmount
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.src = '';
+      }
+    };
+  }, []);
+
+  const handleVideoClick = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (!isVideoPlaying) {
+      // Start playing
+      if (!isVideoLoaded) {
+        setIsVideoLoading(true);
+        video.src = template!.previewUrl;
+        video.load();
+      } else {
+        video.play().catch(() => {
+          console.error("Play failed");
+        });
+      }
+      setIsVideoPlaying(true);
+    } else {
+      // Pause video
+      video.pause();
+      setIsVideoPlaying(false);
+    }
+  };
+
+  const handleVideoLoaded = () => {
+    setIsVideoLoaded(true);
+    setIsVideoLoading(false);
+    
+    if (isVideoPlaying && videoRef.current) {
+      videoRef.current.play().catch(() => {
+        console.error("Autoplay failed");
+      });
+    }
+  };
+
+  const handleVideoError = () => {
+    setIsVideoLoading(false);
+    setIsVideoLoaded(false);
+    showErrorToast("Failed to load video preview");
+  };
+
+  const handleVideoEnded = () => {
+    setIsVideoPlaying(false);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+    }
+  };
 
   const handleTextChange = (fieldKey: string, value: string) => {
     setFormData((prev) => ({ ...prev, [fieldKey]: value }));
@@ -118,7 +184,6 @@ const CustomizePage = () => {
 
     setFormData((prev) => ({ ...prev, [fieldKey]: file }));
 
-    // Create preview
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -133,7 +198,6 @@ const CustomizePage = () => {
       setFilePreviews((prev) => ({ ...prev, [fieldKey]: videoUrl }));
     }
 
-    // Upload to backend immediately
     await uploadSingleAsset(fieldKey, file);
   };
 
@@ -149,7 +213,6 @@ const CustomizePage = () => {
         withCredentials: true,
       });
 
-      // Store the Cloudinary URL
       setUploadedAssets((prev) => ({
         ...prev,
         [fieldKey]: data.urls[0],
@@ -197,10 +260,8 @@ const CustomizePage = () => {
     setIsGenerating(true);
 
     try {
-      // Build the DTO matching your CreateRenderJobDto
       const renderDto: any = {};
 
-      // Map text fields
       Object.entries(template!.fields).forEach(([key, field]) => {
         if (field.type === "text") {
           const value = formData[key] as string;
@@ -208,14 +269,12 @@ const CustomizePage = () => {
             renderDto[key] = value;
           }
         } else if (field.type === "image" || field.type === "video") {
-          // Use uploaded Cloudinary URLs
           if (uploadedAssets[key]) {
             renderDto[key] = uploadedAssets[key];
           }
         }
       });
 
-      // Submit render job
       const { data } = await api.post(
         `/render/create-job/${templateId}`,
         renderDto,
@@ -240,7 +299,6 @@ const CustomizePage = () => {
     if (!renderJob?.outputUrl) return;
 
     try {
-      // Open video URL in new tab for download
       window.open(renderJob.outputUrl, "_blank");
     } catch (error) {
       console.error("Failed to download video:", error);
@@ -251,6 +309,9 @@ const CustomizePage = () => {
   if (!template) {
     return null;
   }
+
+  // Check if we should show rendered video or template preview
+  const showRenderedVideo = renderJob?.status === "COMPLETED" && renderJob.outputUrl;
 
   return (
     <div className="min-h-screen bg-background">
@@ -562,7 +623,8 @@ const CustomizePage = () => {
                 </h2>
 
                 <div className="aspect-video bg-muted rounded-lg overflow-hidden relative border border-border">
-                  {renderJob?.status === "COMPLETED" && renderJob.outputUrl ? (
+                  {showRenderedVideo ? (
+                    // Show rendered video with controls
                     <video
                       src={renderJob.outputUrl}
                       className="w-full h-full object-cover"
@@ -571,19 +633,85 @@ const CustomizePage = () => {
                       loop
                     />
                   ) : (
-                    <video
-                      src={template.previewUrl}
-                      poster={template.thumbnail}
-                      className="w-full h-full object-cover"
-                      controls
-                      autoPlay
-                      loop
-                      muted
-                    />
+                    // Show interactive template preview
+                    <>
+                      {/* Static Thumbnail - shown when video not playing */}
+                      {!isVideoPlaying && !imageError && template.thumbnail && (
+                        <Image
+                          src={template.thumbnail}
+                          alt={template.name}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 1024px) 100vw, 50vw"
+                          onError={() => setImageError(true)}
+                          priority={false}
+                        />
+                      )}
+
+                      {/* Fallback if image fails or no thumbnail */}
+                      {(imageError || !template.thumbnail) && !isVideoPlaying && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                          <p className="text-sm text-muted-foreground">No preview</p>
+                        </div>
+                      )}
+
+                      {/* Video (lazy loaded on first click) */}
+                      <video
+                        ref={videoRef}
+                        className={`w-full h-full object-cover transition-opacity duration-300 ${
+                          isVideoPlaying && isVideoLoaded ? "opacity-100" : "opacity-0"
+                        }`}
+                        onLoadedData={handleVideoLoaded}
+                        onError={handleVideoError}
+                        onEnded={handleVideoEnded}
+                      />
+
+                      {/* Play/Pause Overlay */}
+                      <div 
+                        className="absolute inset-0 cursor-pointer"
+                        onClick={handleVideoClick}
+                      >
+                        {!isVideoPlaying && !isVideoLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/90 backdrop-blur-sm transition-transform hover:scale-110">
+                              <Play className="h-8 w-8 fill-primary-foreground text-primary-foreground ml-1" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Loading indicator while video loads */}
+                        {isVideoLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+                            <Loader2 className="h-12 w-12 animate-spin text-white" />
+                          </div>
+                        )}
+
+                        {/* Subtle pause indicator when playing */}
+                        {isVideoPlaying && isVideoLoaded && (
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/10">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+                              <div className="flex gap-1">
+                                <div className="w-1.5 h-5 bg-white rounded-full" />
+                                <div className="w-1.5 h-5 bg-white rounded-full" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Click hint */}
+                      {!isVideoPlaying && !isVideoLoading && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+                          <p className="text-xs text-white font-medium">
+                            Click to preview
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
-                {renderJob?.status === "COMPLETED" && renderJob.outputUrl && (
+                {showRenderedVideo && (
                   <button
                     onClick={handleDownload}
                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
