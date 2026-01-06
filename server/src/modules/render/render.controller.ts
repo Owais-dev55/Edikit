@@ -9,7 +9,7 @@ import {
   UseInterceptors,
   ParseIntPipe,
   BadRequestException,
-  Logger
+  Logger,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
@@ -33,7 +33,6 @@ import { ConfigService } from '@nestjs/config';
 export class RenderController {
   private readonly logger = new Logger(RenderController.name);
   constructor(
-
     private readonly renderService: RenderService,
     private readonly configService: ConfigService,
   ) {}
@@ -102,45 +101,47 @@ export class RenderController {
   }
 
   @Post('create-job/:templateId')
-@ApiOperation({ summary: 'Create render job' })
-@ApiCookieAuth()
-@ApiResponse({
-  status: 201,
-  description: 'Render job created successfully',
-})
-async createJob(
-  @Param('templateId', ParseIntPipe) templateId: number,
-  @CurrentUser('userId') userId: string,
-  @Body() dto: CreateRenderJobDto,
-) {
-  const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-  
-  // ✅ IMPROVED WEBHOOK URL LOGIC
-  let webhookUrl: string;
-  
-  if (nodeEnv === 'production') {
-    // Production: Use your deployed backend URL
-    const backendUrl = this.configService.get<string>('BACKEND_URL') || 
-                       this.configService.get<string>('RENDER_EXTERNAL_URL');
-    webhookUrl = `${backendUrl}/render/webhook`;
-  } else {
-    // Development: Use ngrok or your local tunnel
-    const localUrl = this.configService.get<string>('NGROK_URL') || 
-                     `http://localhost:${this.configService.get<string>('PORT', '3001')}`;
-    webhookUrl = `${localUrl}/render/webhook`;
+  @ApiOperation({ summary: 'Create render job' })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 201,
+    description: 'Render job created successfully',
+  })
+  async createJob(
+    @Param('templateId', ParseIntPipe) templateId: number,
+    @CurrentUser('userId') userId: string,
+    @Body() dto: CreateRenderJobDto,
+  ) {
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+
+    // ✅ IMPROVED WEBHOOK URL LOGIC
+    let webhookUrl: string;
+
+    if (nodeEnv === 'production') {
+      // Production: Use your deployed backend URL
+      const backendUrl =
+        this.configService.get<string>('BACKEND_URL') ||
+        this.configService.get<string>('RENDER_EXTERNAL_URL');
+      webhookUrl = `${backendUrl}/render/webhook`;
+    } else {
+      // Development: Use ngrok or your local tunnel
+      const localUrl =
+        this.configService.get<string>('NGROK_URL') ||
+        `http://localhost:${this.configService.get<string>('PORT', '3001')}`;
+      webhookUrl = `${localUrl}/render/webhook`;
+    }
+
+    this.logger.log(`Using webhook URL: ${webhookUrl}`);
+
+    const job = await this.renderService.createRenderJob(
+      userId,
+      templateId,
+      dto,
+      webhookUrl,
+    );
+
+    return job;
   }
-
-  this.logger.log(`Using webhook URL: ${webhookUrl}`);
-
-  const job = await this.renderService.createRenderJob(
-    userId,
-    templateId,
-    dto,
-    webhookUrl,
-  );
-
-  return job;
-}
 
   @Get('job/:id')
   @ApiOperation({ summary: 'Get render job status' })
@@ -158,46 +159,54 @@ async createJob(
   }
 
   @Public()
-@Post('webhook')
-@ApiOperation({ summary: 'Nexrender Cloud webhook handler' })
-@ApiResponse({ status: 200, description: 'Webhook processed successfully' })
-async handleWebhook(
-  @Body()
-  body: {
-    id?: string;
-    state?: string;
-    output?: { url?: string };
-    error?: string;
-  },
-) {
-  // ✅ ADD DETAILED LOGGING
-  this.logger.log('=== WEBHOOK RECEIVED ===');
-  this.logger.log('Full webhook body:', JSON.stringify(body, null, 2));
-  this.logger.log('Job ID:', body.id);
-  this.logger.log('State:', body.state);
-  this.logger.log('Output URL:', body.output?.url);
-  this.logger.log('========================');
+  @Post('webhook')
+  @ApiOperation({ summary: 'Nexrender Cloud webhook handler' })
+  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  async handleWebhook(
+    @Body()
+    body: {
+      id?: string;
+      jobId?: string;
+      state?: string;
+      status?: string;
+      output?: { url?: string };
+      outputUrl?: string;
+      error?: string;
+    },
+  ) {
+    this.logger.log('=== NEXRENDER WEBHOOK RECEIVED ===');
+    this.logger.log('Full webhook body:', JSON.stringify(body, null, 2));
 
-  const { id, state, output, error } = body;
+    // Handle multiple possible formats from Nexrender
+    const jobId = body.id || body.jobId;
+    const state = body.state || body.status || '';
+    const outputUrl = body.output?.url || body.outputUrl || '';
+    const error = body.error;
 
-  if (!id) {
-    this.logger.error('Missing job ID in webhook');
-    throw new BadRequestException('Missing job ID in webhook');
+    this.logger.log('Extracted values:', {
+      jobId,
+      state,
+      outputUrl,
+      error,
+    });
+
+    if (!jobId) {
+      this.logger.error('Missing job ID in webhook');
+      throw new BadRequestException('Missing job ID in webhook');
+    }
+
+    const result = await this.renderService.handleRenderComplete(
+      jobId,
+      outputUrl,
+      state,
+      error,
+    );
+
+    this.logger.log('Webhook processed successfully:', result);
+    this.logger.log('========================');
+
+    return { success: true, jobId, result };
   }
-
-  const outputUrl = output?.url || '';
-
-  const result = await this.renderService.handleRenderComplete(
-    id,
-    outputUrl,
-    state || '',
-    error,
-  );
-
-  this.logger.log('Webhook processed result:', result);
-
-  return { success: true };
-}
 
   @Get('job/:id/video')
   @ApiOperation({ summary: 'Get optimized video URL' })
@@ -212,5 +221,51 @@ async handleWebhook(
   ) {
     const url = await this.renderService.getOptimizedVideoUrl(jobId, userId);
     return { url };
+  }
+
+  @Get('templates/:templateId/layers')
+  @ApiOperation({
+    summary: 'Get template layer names (for debugging layer mapping)',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Template layers retrieved successfully',
+  })
+  async getTemplateLayers(
+    @Param('templateId', ParseIntPipe) templateId: number,
+  ) {
+    const template = await this.renderService.getTemplate(templateId);
+
+    // Log to console for easy debugging
+    this.logger.log(`=== Template ${templateId} Layer Information ===`);
+    this.logger.log('Compositions:', template.compositions);
+    this.logger.log('Layers:', template.layers);
+    this.logger.log('===============================================');
+
+    return {
+      templateId,
+      compositions: template.compositions,
+      layers: template.layers,
+      message:
+        'Layer mapping is auto-generated and stored in database. Check server logs for details.',
+    };
+  }
+
+  @Post('templates/upload-all')
+  @ApiOperation({
+    summary: 'Upload all templates to Nexrender Cloud (admin only)',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'All templates uploaded successfully',
+  })
+  async uploadAllTemplates() {
+    const results = await this.renderService.uploadAllTemplates();
+    return {
+      message: 'Template upload process completed',
+      results,
+    };
   }
 }

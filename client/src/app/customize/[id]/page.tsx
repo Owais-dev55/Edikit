@@ -41,8 +41,12 @@ const CustomizePage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
-  const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
-  const [uploadedAssets, setUploadedAssets] = useState<{ [key: string]: string }>({});
+  const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>(
+    {}
+  );
+  const [uploadedAssets, setUploadedAssets] = useState<{
+    [key: string]: string;
+  }>({});
 
   // Redirect if template not found
   useEffect(() => {
@@ -82,7 +86,11 @@ const CustomizePage = () => {
 
   // Poll job status
   useEffect(() => {
-    if (!renderJob || renderJob.status === "COMPLETED" || renderJob.status === "FAILED") {
+    if (
+      !renderJob ||
+      renderJob.status === "COMPLETED" ||
+      renderJob.status === "FAILED"
+    ) {
       return;
     }
 
@@ -91,7 +99,7 @@ const CustomizePage = () => {
         const { data } = await api.get(`/render/job/${renderJob.id}`, {
           withCredentials: true,
         });
-        
+
         setRenderJob(data);
 
         if (data.status === "COMPLETED") {
@@ -502,19 +510,20 @@ const CustomizePage = () => {
                 </div>
 
                 {/* Progress Bar */}
-                {renderJob.status === "PROCESSING" && renderJob.progress !== undefined && (
-                  <div className="space-y-1">
-                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-primary h-full transition-all duration-500 ease-out"
-                        style={{ width: `${renderJob.progress}%` }}
-                      />
+                {renderJob.status === "PROCESSING" &&
+                  renderJob.progress !== undefined && (
+                    <div className="space-y-1">
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-primary h-full transition-all duration-500 ease-out"
+                          style={{ width: `${renderJob.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-right text-muted-foreground">
+                        {renderJob.progress}%
+                      </p>
                     </div>
-                    <p className="text-xs text-right text-muted-foreground">
-                      {renderJob.progress}%
-                    </p>
-                  </div>
-                )}
+                  )}
               </div>
             )}
 
@@ -528,8 +537,8 @@ const CustomizePage = () => {
                   isGenerating ||
                   authLoading ||
                   !hasRequiredFields() ||
-                  (renderJob?.status === "PENDING" ||
-                    renderJob?.status === "PROCESSING")
+                  renderJob?.status === "PENDING" ||
+                  renderJob?.status === "PROCESSING"
                 }
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
