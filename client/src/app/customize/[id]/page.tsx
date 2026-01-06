@@ -47,6 +47,12 @@ const CustomizePage = () => {
   const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
   const [uploadedAssets, setUploadedAssets] = useState<{ [key: string]: string }>({});
 
+  // Video & image preview state
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
   // Redirect if template not found
   useEffect(() => {
     if (!template) {
