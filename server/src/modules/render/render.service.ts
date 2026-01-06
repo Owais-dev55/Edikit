@@ -20,7 +20,10 @@ interface NexrenderTemplate {
   displayName: string;
   status: string;
   compositions?: string[];
-  layers?: string[];
+  layers?: Array<{
+    layerName: string;
+    composition: string;
+  }>;
   uploadInfo?: {
     url: string;
     method: string;
@@ -103,63 +106,125 @@ export class RenderService {
   /**
    * Register template in Nexrender Cloud
    */
-   async registerTemplate(
-  templateId: number,
-  displayName: string,
-): Promise<NexrenderTemplate> {
-  try {
-    this.logger.log(`Calling Nexrender API to register: ${displayName}`);
-    
-    const response = await firstValueFrom(
-      this.httpService.post(
-        `${this.nexrenderApiUrl}/templates`,
-        {
-          type: 'aep',
-          displayName,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.nexrenderApiKey}`,
-            'Content-Type': 'application/json',
+  async registerTemplate(
+    templateId: number,
+    displayName: string,
+  ): Promise<NexrenderTemplate> {
+    try {
+      this.logger.log(`Registering template with Nexrender: ${displayName}`);
+
+      const response = await firstValueFrom(
+        this.httpService.post<NexrenderTemplate>(
+          `${this.nexrenderApiUrl}/templates`,
+          {
+            type: 'aep',
+            displayName,
           },
-        },
-      ),
-    );
+          {
+            headers: {
+              Authorization: `Bearer ${this.nexrenderApiKey}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
 
-    // Handle nested response structure
-    const responseData = response.data;
-    const templateData = responseData.template || responseData;
-    const uploadInfo = responseData.uploadInfo;
+      // Log full response for debugging
+      this.logger.log(
+        `Nexrender API response for template ${templateId}:`,
+        JSON.stringify(response.data, null, 2),
+      );
 
-    if (!templateData.id) {
-      this.logger.error('No template ID in response:', responseData);
-      throw new BadRequestException('Invalid template response from Nexrender');
+      // According to Nexrender API docs, response is direct template object
+      const template = response.data;
+
+      // Handle different possible response structures
+      if (!template) {
+        this.logger.error('Empty response from Nexrender');
+        throw new BadRequestException('Empty response from Nexrender');
+      }
+
+      // Check if response has nested structure
+      const templateIdValue =
+        template.id ||
+        (template as any).template?.id ||
+        (template as any).data?.id;
+      const uploadInfoValue =
+        template.uploadInfo ||
+        (template as any).template?.uploadInfo ||
+        (template as any).data?.uploadInfo;
+
+      if (!templateIdValue) {
+        this.logger.error('No template ID in response:', {
+          fullResponse: template,
+          responseKeys: Object.keys(template),
+        });
+        throw new BadRequestException(
+          'Invalid template response from Nexrender - no ID found',
+        );
+      }
+
+      if (!uploadInfoValue) {
+        this.logger.error('No uploadInfo in response:', {
+          fullResponse: template,
+          responseKeys: Object.keys(template),
+        });
+        throw new BadRequestException(
+          'No upload information received from Nexrender',
+        );
+      }
+
+      // Normalize template object
+      const normalizedTemplate: NexrenderTemplate = {
+        id: templateIdValue,
+        displayName: template.displayName || displayName,
+        status: template.status || 'awaiting_upload',
+        compositions: template.compositions || [],
+        layers: template.layers || [],
+        uploadInfo: uploadInfoValue,
+      };
+
+      this.logger.log(`Template registered successfully:`, {
+        id: normalizedTemplate.id,
+        displayName: normalizedTemplate.displayName,
+        status: normalizedTemplate.status,
+        hasUploadUrl: !!normalizedTemplate.uploadInfo?.url,
+      });
+
+      return normalizedTemplate;
+    } catch (error: unknown) {
+      const errorResponse = (error as any)?.response;
+      this.logger.error('Failed to register template', {
+        templateId,
+        displayName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        response: errorResponse?.data,
+        status: errorResponse?.status,
+        statusText: errorResponse?.statusText,
+      });
+
+      // Provide more specific error message
+      if (errorResponse?.status === 401) {
+        throw new BadRequestException(
+          'Authentication failed - check your Nexrender API key',
+        );
+      } else if (errorResponse?.status === 429) {
+        throw new BadRequestException(
+          'Rate limit exceeded - please wait and try again',
+        );
+      } else if (errorResponse?.data) {
+        throw new BadRequestException(
+          `Failed to register template: ${JSON.stringify(errorResponse.data)}`,
+        );
+      }
+
+      throw new BadRequestException(
+        `Failed to register template: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
     }
-
-    this.logger.log(`Template registered successfully:`, {
-      id: templateData.id,
-      displayName: templateData.displayName,
-      status: templateData.status,
-    });
-
-    // Merge template data with uploadInfo
-    return {
-      ...templateData,
-      uploadInfo,
-    } as NexrenderTemplate;
-  } catch (error: unknown) {
-    this.logger.error('Failed to register template', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      response: (error as any)?.response?.data,
-      status: (error as any)?.response?.status,
-    });
-    throw new BadRequestException(
-      `Failed to register template: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`,
-    );
   }
-}
 
   /**
    * Upload .aep file to presigned URL
@@ -323,7 +388,14 @@ export class RenderService {
       registeredTemplate.id,
     );
 
-    // Store in database
+    // Auto-generate layer mapping from layers
+    const layers = uploadedTemplate.layers || [];
+    const layerMapping =
+      Array.isArray(layers) && layers.length > 0
+        ? this.autoGenerateLayerMapping(layers, templateId)
+        : {};
+
+    // Store in database with auto-generated mapping
     await this.prisma.nexrenderTemplate.upsert({
       where: { templateId },
       update: {
@@ -331,6 +403,7 @@ export class RenderService {
         status: uploadedTemplate.status,
         compositions: uploadedTemplate.compositions || [],
         layers: uploadedTemplate.layers || [],
+        layerMapping: layerMapping as any, // JSON field - type is correct
       },
       create: {
         templateId,
@@ -339,8 +412,14 @@ export class RenderService {
         status: uploadedTemplate.status,
         compositions: uploadedTemplate.compositions || [],
         layers: uploadedTemplate.layers || [],
+        layerMapping: layerMapping as any, // JSON field - type is correct
       },
     });
+
+    this.logger.log(
+      `Template ${templateId} uploaded and layer mapping generated:`,
+      layerMapping,
+    );
 
     return uploadedTemplate.id;
   }
@@ -350,7 +429,7 @@ export class RenderService {
    */
   async getTemplateCompositions(templateId: number): Promise<{
     compositions: string[];
-    layers: string[];
+    layers: Array<{ layerName: string; composition: string }>;
   }> {
     const nexrenderId = await this.getTemplateId(templateId);
     if (!nexrenderId) {
@@ -371,7 +450,10 @@ export class RenderService {
 
       return {
         compositions: response.data.compositions || [],
-        layers: response.data.layers || [],
+        layers: (response.data.layers || []) as Array<{
+          layerName: string;
+          composition: string;
+        }>,
       };
     } catch (error: unknown) {
       this.logger.error('Failed to get template compositions', error);
@@ -418,20 +500,24 @@ export class RenderService {
 
     // Get compositions and layers from Nexrender if available
     let compositions: string[] = [];
-    let layers: string[] = [];
+    let layers: Array<{ layerName: string; composition: string }> = [];
 
     if (template.nexrenderId) {
       try {
         const compData = await this.getTemplateCompositions(templateId);
         compositions = compData.compositions;
         layers = compData.layers;
-      } catch (error) {
+      } catch {
         this.logger.warn(
           `Failed to fetch compositions for template ${templateId}`,
         );
         // Use stored data if available
         compositions = (template.compositions as string[]) || [];
-        layers = (template.layers as string[]) || [];
+        layers =
+          (template.layers as Array<{
+            layerName: string;
+            composition: string;
+          }>) || [];
       }
     }
 
@@ -516,15 +602,134 @@ export class RenderService {
   }
 
   /**
-   * Build assets array for Nexrender job
+   * Get layer mapping for a template from database
+   * Falls back to auto-generating from Nexrender layers if not stored
    */
-  private buildNexrenderAssets(dto: CreateRenderJobDto): Array<{
-    type: string;
-    layerName?: string;
-    property?: string;
-    value?: string | number[];
-    src?: string;
-  }> {
+  private async getLayerMapping(
+    templateId: number,
+  ): Promise<Record<string, string>> {
+    // Try to get from database first
+    const template = await this.prisma.nexrenderTemplate.findUnique({
+      where: { templateId },
+    });
+
+    // Check if layerMapping exists (will work after Prisma regenerate)
+    const layerMapping = (template as any)?.layerMapping;
+    if (layerMapping) {
+      return layerMapping as Record<string, string>;
+    }
+
+    // Auto-generate mapping from layers if available
+    if (template?.layers) {
+      const layers = template.layers as Array<{
+        layerName: string;
+        composition: string;
+      }>;
+      return this.autoGenerateLayerMapping(layers, templateId);
+    }
+
+    // Fallback to empty mapping (will use defaults)
+    return {};
+  }
+
+  /**
+   * Auto-generate layer mapping from Nexrender layers
+   * Attempts to match frontend field names to layer names
+   */
+  private autoGenerateLayerMapping(
+    layers: Array<{ layerName: string; composition: string }>,
+    templateId: number,
+  ): Record<string, string> {
+    const mapping: Record<string, string> = {};
+
+    // Common patterns to match
+    const patterns = {
+      text1: [
+        /text\s*1/i,
+        /headline/i,
+        /title/i,
+        /prova\s*scena\s*6/i,
+        /main\s*text/i,
+      ],
+      text2: [
+        /text\s*2/i,
+        /subheadline/i,
+        /subtitle/i,
+        /prova\s*scena\s*5/i,
+        /description/i,
+      ],
+      text3: [/text\s*3/i, /description/i, /body/i],
+      image1: [
+        /image\s*1/i,
+        /logo/i,
+        /main\s*image/i,
+        /images\s*and\s*videos/i,
+      ],
+      image2: [/image\s*2/i, /img\.png/i, /secondary/i],
+      image3: [/image\s*3/i, /box\s*5/i, /icon/i],
+      icon1: [/icon\s*1/i, /social\s*icon/i],
+      icon2: [/icon\s*2/i],
+      icon3: [/icon\s*3/i],
+      icon4: [/icon\s*4/i],
+      background: [/bg\.png/i, /background/i, /backdrop/i],
+    };
+
+    // Match layers to patterns
+    for (const [fieldName, regexPatterns] of Object.entries(patterns)) {
+      for (const layer of layers) {
+        for (const pattern of regexPatterns) {
+          if (pattern.test(layer.layerName)) {
+            mapping[fieldName] = layer.layerName;
+            break;
+          }
+        }
+        if (mapping[fieldName]) break;
+      }
+    }
+
+    this.logger.log(
+      `Auto-generated layer mapping for template ${templateId}:`,
+      mapping,
+    );
+
+    return mapping;
+  }
+
+  /**
+   * Helper method to log actual layer names from Nexrender
+   * Call this after template upload to see what layer names Nexrender detected
+   */
+  async logTemplateLayers(templateId: number): Promise<void> {
+    try {
+      const template = await this.getTemplate(templateId);
+      this.logger.log(`=== Template ${templateId} Layer Names ===`);
+      this.logger.log('Compositions:', template.compositions);
+      this.logger.log('Layers:', template.layers);
+      this.logger.log('==========================================');
+      this.logger.log(
+        '⚠️ Update getLayerMapping() with these actual layer names!',
+      );
+    } catch (error) {
+      this.logger.error('Failed to log template layers:', error);
+    }
+  }
+
+  /**
+   * Build assets array for Nexrender job
+   * Only includes assets if frontend provides them (uses .aep defaults otherwise)
+   */
+  private async buildNexrenderAssets(
+    dto: CreateRenderJobDto,
+    templateId: number,
+  ): Promise<
+    Array<{
+      type: string;
+      layerName?: string;
+      property?: string;
+      value?: string | number[];
+      src?: string;
+    }>
+  > {
     const assets: Array<{
       type: string;
       layerName?: string;
@@ -533,114 +738,130 @@ export class RenderService {
       src?: string;
     }> = [];
 
+    // Get layer mapping for this template (from database)
+    const layerMapping = await this.getLayerMapping(templateId);
+
     // Map frontend-friendly field names to backend field names
     const text1 = dto.text1 || dto.headline;
     const text2 = dto.text2 || dto.subheadline;
     const text3 = dto.text3 || dto.description;
     const image1 = dto.image1 || dto.logo;
 
-    // Text replacements
+    // Text replacements - use mapped layer names
     if (text1) {
+      const layerName = layerMapping.text1 || 'Text 1'; // Fallback to default
       assets.push({
         type: 'data',
-        layerName: 'Text 1',
+        layerName,
         property: 'Source Text',
         value: text1,
       });
     }
     if (text2) {
+      const layerName = layerMapping.text2 || 'Text 2';
       assets.push({
         type: 'data',
-        layerName: 'Text 2',
+        layerName,
         property: 'Source Text',
         value: text2,
       });
     }
     if (text3) {
+      const layerName = layerMapping.text3 || 'Text 3';
       assets.push({
         type: 'data',
-        layerName: 'Text 3',
+        layerName,
         property: 'Source Text',
         value: text3,
       });
     }
 
-    // Image replacements
+    // Image replacements - use mapped layer names
     if (image1) {
+      const layerName = layerMapping.image1 || 'Image 1';
       assets.push({
         type: 'image',
         src: image1,
-        layerName: 'Image 1',
+        layerName,
       });
     }
     if (dto.image2) {
+      const layerName = layerMapping.image2 || 'Image 2';
       assets.push({
         type: 'image',
         src: dto.image2,
-        layerName: 'Image 2',
+        layerName,
       });
     }
     if (dto.image3) {
+      const layerName = layerMapping.image3 || 'Image 3';
       assets.push({
         type: 'image',
         src: dto.image3,
-        layerName: 'Image 3',
+        layerName,
       });
     }
     if (dto.image4) {
+      const layerName = layerMapping.image4 || 'Image 4';
       assets.push({
         type: 'image',
         src: dto.image4,
-        layerName: 'Image 4',
+        layerName,
       });
     }
 
-    // Icon replacements
+    // Icon replacements - use mapped layer names
     if (dto.icon1) {
+      const layerName = layerMapping.icon1 || 'Icon 1';
       assets.push({
         type: 'image',
         src: dto.icon1,
-        layerName: 'Icon 1',
+        layerName,
       });
     }
     if (dto.icon2) {
+      const layerName = layerMapping.icon2 || 'Icon 2';
       assets.push({
         type: 'image',
         src: dto.icon2,
-        layerName: 'Icon 2',
+        layerName,
       });
     }
     if (dto.icon3) {
+      const layerName = layerMapping.icon3 || 'Icon 3';
       assets.push({
         type: 'image',
         src: dto.icon3,
-        layerName: 'Icon 3',
+        layerName,
       });
     }
     if (dto.icon4) {
+      const layerName = layerMapping.icon4 || 'Icon 4';
       assets.push({
         type: 'image',
         src: dto.icon4,
-        layerName: 'Icon 4',
+        layerName,
       });
     }
 
-    // Background
+    // Background - use mapped layer name
     if (dto.background) {
+      const layerName = layerMapping.background || 'Background';
       assets.push({
         type: 'image',
         src: dto.background,
-        layerName: 'Background',
+        layerName,
       });
     }
 
-    // Color replacements
+    // Color replacements - use mapped layer names
     if (dto.colors) {
       // Primary color
       if (dto.colors.primary) {
+        const layerName = layerMapping.colorPrimary || 'Primary Color';
         assets.push({
           type: 'data',
-          layerName: 'Primary Color',
+          layerName,
           property: 'Color',
           value: this.hexToRgb(dto.colors.primary),
         });
@@ -648,9 +869,10 @@ export class RenderService {
 
       // Secondary color
       if (dto.colors.secondary) {
+        const layerName = layerMapping.colorSecondary || 'Secondary Color';
         assets.push({
           type: 'data',
-          layerName: 'Secondary Color',
+          layerName,
           property: 'Color',
           value: this.hexToRgb(dto.colors.secondary),
         });
@@ -658,9 +880,10 @@ export class RenderService {
 
       // Accent color
       if (dto.colors.accent) {
+        const layerName = layerMapping.colorAccent || 'Accent Color';
         assets.push({
           type: 'data',
-          layerName: 'Accent Color',
+          layerName,
           property: 'Color',
           value: this.hexToRgb(dto.colors.accent),
         });
@@ -668,9 +891,10 @@ export class RenderService {
 
       // Background color
       if (dto.colors.background) {
+        const layerName = layerMapping.colorBackground || 'Background Color';
         assets.push({
           type: 'data',
-          layerName: 'Background Color',
+          layerName,
           property: 'Color',
           value: this.hexToRgb(dto.colors.background),
         });
@@ -678,9 +902,10 @@ export class RenderService {
 
       // Text color
       if (dto.colors.text) {
+        const layerName = layerMapping.colorText || 'Text Color';
         assets.push({
           type: 'data',
-          layerName: 'Text Color',
+          layerName,
           property: 'Color',
           value: this.hexToRgb(dto.colors.text),
         });
@@ -718,11 +943,25 @@ export class RenderService {
     // Ensure template is uploaded
     const nexrenderTemplateId = await this.ensureTemplateUploaded(templateId);
 
-    // Get composition name (default to "Animation {templateId}")
-    const composition = `Animation ${templateId}`;
+    // Get template info to fetch actual composition name
+    const template = await this.getTemplate(templateId);
+    const compositions = template.compositions || [];
 
-    // Build assets array
-    const assets = this.buildNexrenderAssets(dto);
+    if (compositions.length === 0) {
+      throw new BadRequestException(
+        `Template ${templateId} has no compositions. Please ensure the template is properly uploaded.`,
+      );
+    }
+
+    // Use first composition (or you can allow user to select)
+    // For MVP, we'll use the first composition
+    const composition = compositions[0];
+    this.logger.log(
+      `Using composition "${composition}" for template ${templateId}`,
+    );
+
+    // Build assets array (only includes assets if frontend provides them)
+    const assets = await this.buildNexrenderAssets(dto, templateId);
 
     // Submit job to Nexrender
     const nexrenderJob = await this.submitNexrenderJob(
@@ -750,169 +989,185 @@ export class RenderService {
    * Get job status
    */
   // In your render.service.ts - update getJobStatus
-async getJobStatus(jobId: string, userId: string) {
-  const job = await this.prisma.renderJob.findFirst({
-    where: { id: jobId, userId },
-  });
+  async getJobStatus(jobId: string, userId: string) {
+    const job = await this.prisma.renderJob.findFirst({
+      where: { id: jobId, userId },
+    });
 
-  if (!job) {
-    throw new NotFoundException('Job not found');
-  }
+    if (!job) {
+      throw new NotFoundException('Job not found');
+    }
 
-  if (job.nexrenderJobId) {
-    try {
-      this.logger.log(`Checking Nexrender status for job: ${job.nexrenderJobId}`);
-      
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.nexrenderApiUrl}/jobs/${job.nexrenderJobId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${this.nexrenderApiKey}`,
+    if (job.nexrenderJobId) {
+      try {
+        this.logger.log(
+          `Checking Nexrender status for job: ${job.nexrenderJobId}`,
+        );
+
+        const response = await firstValueFrom(
+          this.httpService.get(
+            `${this.nexrenderApiUrl}/jobs/${job.nexrenderJobId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${this.nexrenderApiKey}`,
+              },
             },
-          },
-        ),
-      );
+          ),
+        );
 
-      const jobData = response.data;
-      
-      // Extract fields from response
-      const state = jobData.state || jobData.status || jobData.renderStatus;
-      const progress = jobData.progress || jobData.renderProgress || 0;
-      const outputUrl = jobData.output?.url || jobData.outputUrl || jobData.result?.url;
-      
-      this.logger.log(`Nexrender job details:`, {
-        state,
-        progress,
-        hasOutputUrl: !!outputUrl,
-      });
+        const jobData = response.data;
 
-      // ✅ Determine status based on progress and state
-      let status = job.status;
-      
-      if (progress > 0 && progress < 100) {
-        // If we have progress and it's not complete, it's processing
-        status = 'PROCESSING';
-      } else if (progress === 100 && outputUrl) {
-        // Progress is 100 AND we have output URL = completed
-        status = 'COMPLETED';
-      } else if (progress === 100 && !outputUrl) {
-        // Progress is 100 but no URL yet = still processing/finalizing
-        status = 'PROCESSING';
-      } else if (state === 'finished' || state === 'completed' || state === 'done') {
-        status = 'COMPLETED';
-      } else if (state === 'error' || state === 'failed') {
-        status = 'FAILED';
-      } else if (state === 'processing' || state === 'rendering') {
-        status = 'PROCESSING';
-      } else if (state === 'queued' || state === 'pending') {
-        status = 'PENDING';
-      }
+        // Extract fields from response
+        const state = jobData.state || jobData.status || jobData.renderStatus;
+        const progress = jobData.progress || jobData.renderProgress || 0;
+        const outputUrl =
+          jobData.output?.url || jobData.outputUrl || jobData.result?.url;
 
-      // ✅ If completed and we have output URL, download and upload to Cloudinary
-      if (status === 'COMPLETED' && outputUrl && !job.outputUrl) {
-        this.logger.log('Job completed! Downloading video from Nexrender...');
-        
-        try {
-          const videoResponse = await firstValueFrom(
-            this.httpService.get(outputUrl, {
-              responseType: 'arraybuffer',
-              maxBodyLength: Infinity,
-              maxContentLength: Infinity,
-              timeout: 60000, // 60 second timeout for large files
-            }),
-          );
+        this.logger.log(`Nexrender job details:`, {
+          state,
+          progress,
+          hasOutputUrl: !!outputUrl,
+        });
 
-          const videoBuffer = Buffer.from(videoResponse.data);
-          this.logger.log(`Downloaded video: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`);
+        // Map Nexrender states to our RenderStatus enum
+        const stateMap: Record<string, RenderStatus> = {
+          pending: RenderStatus.PENDING,
+          queued: RenderStatus.PENDING,
+          processing: RenderStatus.PROCESSING,
+          rendering: RenderStatus.PROCESSING,
+          finished: RenderStatus.COMPLETED,
+          completed: RenderStatus.COMPLETED,
+          done: RenderStatus.COMPLETED,
+          error: RenderStatus.FAILED,
+          failed: RenderStatus.FAILED,
+        };
 
-          this.logger.log('Uploading to Cloudinary...');
-          const uploadResult = await this.cloudinaryService.uploadRenderedVideo(
-            videoBuffer,
-            job.userId,
-            job.nexrenderJobId,
-          );
+        // Determine status: prioritize state, then progress, then output URL
+        let status = job.status;
+        const normalizedState = (state || '').toLowerCase();
 
-          this.logger.log(`Uploaded to Cloudinary: ${uploadResult.secure_url}`);
+        if (stateMap[normalizedState]) {
+          status = stateMap[normalizedState];
+        } else if (progress !== undefined) {
+          // Fallback to progress-based status
+          if (progress === 100 && outputUrl) {
+            status = RenderStatus.COMPLETED;
+          } else if (progress > 0 && progress < 100) {
+            status = RenderStatus.PROCESSING;
+          } else if (progress === 0) {
+            status = RenderStatus.PENDING;
+          }
+        }
 
-          await this.prisma.renderJob.update({
-            where: { id: job.id },
-            data: {
+        // ✅ If completed and we have output URL, download and upload to Cloudinary
+        if (status === 'COMPLETED' && outputUrl && !job.outputUrl) {
+          this.logger.log('Job completed! Downloading video from Nexrender...');
+
+          try {
+            const videoResponse = await firstValueFrom(
+              this.httpService.get(outputUrl, {
+                responseType: 'arraybuffer',
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+                timeout: 60000, // 60 second timeout for large files
+              }),
+            );
+
+            const videoBuffer = Buffer.from(videoResponse.data);
+            this.logger.log(
+              `Downloaded video: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`,
+            );
+
+            this.logger.log('Uploading to Cloudinary...');
+            const uploadResult =
+              await this.cloudinaryService.uploadRenderedVideo(
+                videoBuffer,
+                job.userId,
+                job.nexrenderJobId,
+              );
+
+            this.logger.log(
+              `Uploaded to Cloudinary: ${uploadResult.secure_url}`,
+            );
+
+            await this.prisma.renderJob.update({
+              where: { id: job.id },
+              data: {
+                status: 'COMPLETED',
+                outputUrl: uploadResult.secure_url,
+                nexrenderOutputUrl: outputUrl,
+              },
+            });
+
+            return {
+              id: job.id,
+              userId: job.userId,
+              templateId: job.templateId,
               status: 'COMPLETED',
               outputUrl: uploadResult.secure_url,
               nexrenderOutputUrl: outputUrl,
-            },
-          });
+              progress: 100,
+              createdAt: job.createdAt,
+              updatedAt: job.updatedAt,
+            };
+          } catch (uploadError) {
+            this.logger.error('Failed to download/upload video:', uploadError);
 
-          return {
-            id: job.id,
-            userId: job.userId,
-            templateId: job.templateId,
-            status: 'COMPLETED',
-            outputUrl: uploadResult.secure_url,
-            nexrenderOutputUrl: outputUrl,
-            progress: 100,
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt,
-          };
-        } catch (uploadError) {
-          this.logger.error('Failed to download/upload video:', uploadError);
-          
-          // Still mark as completed with Nexrender URL
+            // Still mark as completed with Nexrender URL
+            await this.prisma.renderJob.update({
+              where: { id: job.id },
+              data: {
+                status: 'COMPLETED',
+                outputUrl: outputUrl, // Use Nexrender URL directly
+                nexrenderOutputUrl: outputUrl,
+              },
+            });
+
+            return {
+              id: job.id,
+              userId: job.userId,
+              templateId: job.templateId,
+              status: 'COMPLETED',
+              outputUrl: outputUrl,
+              nexrenderOutputUrl: outputUrl,
+              progress: 100,
+              createdAt: job.createdAt,
+              updatedAt: job.updatedAt,
+            };
+          }
+        }
+
+        // Update job in database
+        if (status !== job.status || (outputUrl && !job.nexrenderOutputUrl)) {
           await this.prisma.renderJob.update({
             where: { id: job.id },
             data: {
-              status: 'COMPLETED',
-              outputUrl: outputUrl, // Use Nexrender URL directly
-              nexrenderOutputUrl: outputUrl,
+              status,
+              nexrenderOutputUrl: outputUrl || job.nexrenderOutputUrl,
             },
           });
-
-          return {
-            id: job.id,
-            userId: job.userId,
-            templateId: job.templateId,
-            status: 'COMPLETED',
-            outputUrl: outputUrl,
-            nexrenderOutputUrl: outputUrl,
-            progress: 100,
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt,
-          };
         }
-      }
 
-      // Update job in database
-      if (status !== job.status || (outputUrl && !job.nexrenderOutputUrl)) {
-        await this.prisma.renderJob.update({
-          where: { id: job.id },
-          data: {
-            status,
-            nexrenderOutputUrl: outputUrl || job.nexrenderOutputUrl,
-          },
-        });
+        return {
+          id: job.id,
+          userId: job.userId,
+          templateId: job.templateId,
+          status,
+          outputUrl: job.outputUrl || outputUrl,
+          nexrenderOutputUrl: outputUrl,
+          nexrenderState: state,
+          progress,
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+        };
+      } catch (error) {
+        this.logger.error('Failed to get Nexrender job status:', error);
       }
-
-      return {
-        id: job.id,
-        userId: job.userId,
-        templateId: job.templateId,
-        status,
-        outputUrl: job.outputUrl || outputUrl,
-        nexrenderOutputUrl: outputUrl,
-        nexrenderState: state,
-        progress,
-        createdAt: job.createdAt,
-        updatedAt: job.updatedAt,
-      };
-    } catch (error) {
-      this.logger.error('Failed to get Nexrender job status:', error);
     }
-  }
 
-  return job;
-}
-//testing
+    return job;
+  }
+  //testing
   /**
    * Handle render completion webhook
    */
@@ -931,18 +1186,32 @@ async getJobStatus(jobId: string, userId: string) {
       return null;
     }
 
-    if (state === 'finished' && outputUrl) {
+    const normalizedState = (state || '').toLowerCase();
+    const isCompleted =
+      normalizedState === 'finished' ||
+      normalizedState === 'completed' ||
+      normalizedState === 'done';
+
+    if (isCompleted && outputUrl) {
       try {
+        this.logger.log(
+          `Processing completed render job ${job.id}, downloading from: ${outputUrl}`,
+        );
+
         // Download video from Nexrender
         const videoResponse = await firstValueFrom(
           this.httpService.get(outputUrl, {
             responseType: 'arraybuffer',
             maxBodyLength: Infinity,
             maxContentLength: Infinity,
+            timeout: 60000, // 60 second timeout for large files
           }),
         );
 
         const videoBuffer = Buffer.from(videoResponse.data);
+        this.logger.log(
+          `Downloaded video: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`,
+        );
 
         // Upload to Cloudinary
         const uploadResult = await this.cloudinaryService.uploadRenderedVideo(
@@ -951,11 +1220,13 @@ async getJobStatus(jobId: string, userId: string) {
           nexrenderJobId,
         );
 
+        this.logger.log(`Uploaded to Cloudinary: ${uploadResult.secure_url}`);
+
         // Update job
         await this.prisma.renderJob.update({
           where: { id: job.id },
           data: {
-            status: 'COMPLETED',
+            status: RenderStatus.COMPLETED,
             outputUrl: uploadResult.secure_url,
             nexrenderOutputUrl: outputUrl,
           },
@@ -966,7 +1237,13 @@ async getJobStatus(jobId: string, userId: string) {
           outputUrl: uploadResult.secure_url,
         };
       } catch (error: unknown) {
-        this.logger.error('Failed to process render completion', error);
+        this.logger.error('Failed to process render completion', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          jobId: job.id,
+          nexrenderJobId,
+        });
+
+        // Store error but keep Nexrender URL as fallback
         await this.prisma.renderJob.update({
           where: { id: job.id },
           data: {
@@ -979,7 +1256,8 @@ async getJobStatus(jobId: string, userId: string) {
         });
         throw error;
       }
-    } else if (state === 'error') {
+    } else if (normalizedState === 'error' || normalizedState === 'failed') {
+      this.logger.error(`Render job failed: ${nexrenderJobId}`, { error });
       await this.prisma.renderJob.update({
         where: { id: job.id },
         data: {
@@ -987,6 +1265,10 @@ async getJobStatus(jobId: string, userId: string) {
           error: error || 'Render failed',
         },
       });
+    } else {
+      this.logger.log(
+        `Render job ${nexrenderJobId} state: ${state} (not completed yet)`,
+      );
     }
 
     return null;
@@ -1006,5 +1288,89 @@ async getJobStatus(jobId: string, userId: string) {
     // For now, just return the URL as-is
     // Can be enhanced with optimization transformations
     return job.outputUrl;
+  }
+
+  /**
+   * Upload all templates to Nexrender Cloud
+   * This should be called once to initialize all templates
+   */
+  async uploadAllTemplates(): Promise<
+    Array<{
+      templateId: number;
+      success: boolean;
+      nexrenderId?: string;
+      error?: string;
+    }>
+  > {
+    const results: Array<{
+      templateId: number;
+      success: boolean;
+      nexrenderId?: string;
+      error?: string;
+    }> = [];
+
+    // Find all .aep files in animations folder
+    const files = await fs.readdir(this.animationsPath);
+    const aepFiles = files.filter((f) => f.endsWith('.aep'));
+
+    this.logger.log(`Found ${aepFiles.length} .aep files to upload`);
+
+    for (const file of aepFiles) {
+      // Extract template ID from filename (e.g., "Animation 1.aep" -> 1)
+      const match = file.match(/Animation\s+(\d+)\.aep/i);
+      if (!match) {
+        this.logger.warn(`Skipping file with unexpected name: ${file}`);
+        continue;
+      }
+
+      const templateId = parseInt(match[1], 10);
+
+      try {
+        this.logger.log(`Uploading template ${templateId} (${file})...`);
+
+        // Check if already uploaded
+        const existing = await this.getTemplateId(templateId);
+        if (existing) {
+          this.logger.log(
+            `Template ${templateId} already uploaded, skipping...`,
+          );
+          results.push({
+            templateId,
+            success: true,
+            nexrenderId: existing,
+          });
+          continue;
+        }
+
+        // Upload template
+        const nexrenderId = await this.ensureTemplateUploaded(templateId);
+
+        results.push({
+          templateId,
+          success: true,
+          nexrenderId,
+        });
+
+        this.logger.log(
+          `✅ Template ${templateId} uploaded successfully: ${nexrenderId}`,
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(
+          `❌ Failed to upload template ${templateId}: ${errorMessage}`,
+        );
+        results.push({
+          templateId,
+          success: false,
+          error: errorMessage,
+        });
+      }
+
+      // Small delay between uploads to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    return results;
   }
 }
