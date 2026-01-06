@@ -103,37 +103,63 @@ export class RenderService {
   /**
    * Register template in Nexrender Cloud
    */
-  async registerTemplate(
-    templateId: number,
-    displayName: string,
-  ): Promise<NexrenderTemplate> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post<NexrenderTemplate>(
-          `${this.nexrenderApiUrl}/templates`,
-          {
-            type: 'aep',
-            displayName,
+   async registerTemplate(
+  templateId: number,
+  displayName: string,
+): Promise<NexrenderTemplate> {
+  try {
+    this.logger.log(`Calling Nexrender API to register: ${displayName}`);
+    
+    const response = await firstValueFrom(
+      this.httpService.post(
+        `${this.nexrenderApiUrl}/templates`,
+        {
+          type: 'aep',
+          displayName,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.nexrenderApiKey}`,
+            'Content-Type': 'application/json',
           },
-          {
-            headers: {
-              Authorization: `Bearer ${this.nexrenderApiKey}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
+        },
+      ),
+    );
 
-      return response.data;
-    } catch (error: unknown) {
-      this.logger.error('Failed to register template', error);
-      throw new BadRequestException(
-        `Failed to register template: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
-      );
+    // Handle nested response structure
+    const responseData = response.data;
+    const templateData = responseData.template || responseData;
+    const uploadInfo = responseData.uploadInfo;
+
+    if (!templateData.id) {
+      this.logger.error('No template ID in response:', responseData);
+      throw new BadRequestException('Invalid template response from Nexrender');
     }
+
+    this.logger.log(`Template registered successfully:`, {
+      id: templateData.id,
+      displayName: templateData.displayName,
+      status: templateData.status,
+    });
+
+    // Merge template data with uploadInfo
+    return {
+      ...templateData,
+      uploadInfo,
+    } as NexrenderTemplate;
+  } catch (error: unknown) {
+    this.logger.error('Failed to register template', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      response: (error as any)?.response?.data,
+      status: (error as any)?.response?.status,
+    });
+    throw new BadRequestException(
+      `Failed to register template: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`,
+    );
   }
+}
 
   /**
    * Upload .aep file to presigned URL
@@ -723,67 +749,157 @@ export class RenderService {
   /**
    * Get job status
    */
-  async getJobStatus(jobId: string, userId: string) {
-    const job = await this.prisma.renderJob.findFirst({
-      where: { id: jobId, userId },
-    });
+  // In your render.service.ts - update getJobStatus
+async getJobStatus(jobId: string, userId: string) {
+  const job = await this.prisma.renderJob.findFirst({
+    where: { id: jobId, userId },
+  });
 
-    if (!job) {
-      throw new NotFoundException('Job not found');
-    }
+  if (!job) {
+    throw new NotFoundException('Job not found');
+  }
 
-    // Optionally check Nexrender for latest status
-    if (job.nexrenderJobId) {
-      try {
-        const response = await firstValueFrom(
-          this.httpService.get<NexrenderJobResponse>(
-            `${this.nexrenderApiUrl}/jobs/${job.nexrenderJobId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${this.nexrenderApiKey}`,
-              },
+  // Check Nexrender for latest status
+  if (job.nexrenderJobId) {
+    try {
+      this.logger.log(`Checking Nexrender status for job: ${job.nexrenderJobId}`);
+      
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.nexrenderApiUrl}/jobs/${job.nexrenderJobId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.nexrenderApiKey}`,
             },
-          ),
-        );
+          },
+        ),
+      );
 
-        // Update job status based on Nexrender status
-        let status = job.status;
-        if (response.data.state === 'finished') {
-          status = 'COMPLETED';
-        } else if (response.data.state === 'error') {
-          status = 'FAILED';
-        } else if (response.data.state === 'processing') {
-          status = 'PROCESSING';
-        }
+      // ✅ LOG THE FULL RESPONSE TO SEE THE STRUCTURE
+      this.logger.log('Full Nexrender response:', JSON.stringify(response.data, null, 2));
 
-        // Update job if status changed
-        if (status !== job.status) {
+      const jobData = response.data;
+      
+      // ✅ Try different possible field names
+      const state = jobData.state || jobData.status || jobData.renderStatus;
+      const progress = jobData.progress || jobData.renderProgress || 0;
+      const outputUrl = jobData.output?.url || jobData.outputUrl || jobData.result?.url;
+      
+      this.logger.log(`Job details:`, {
+        state,
+        progress,
+        outputUrl,
+      });
+
+      // Map states to your DB status
+      let status = job.status;
+      
+      if (state === 'finished' || state === 'completed' || state === 'done') {
+        status = 'COMPLETED';
+      } else if (state === 'error' || state === 'failed') {
+        status = 'FAILED';
+      } else if (state === 'processing' || state === 'rendering') {
+        status = 'PROCESSING';
+      } else if (state === 'queued' || state === 'pending') {
+        status = 'PENDING';
+      } else if (progress === 100 && !state) {
+        // ✅ If progress is 100 but no state, assume completed
+        status = 'COMPLETED';
+      }
+
+      // ✅ If completed and we have output URL, download and upload to Cloudinary
+      if (status === 'COMPLETED' && outputUrl && !job.outputUrl) {
+        this.logger.log('Job completed! Downloading and uploading to Cloudinary...');
+        
+        try {
+          const videoResponse = await firstValueFrom(
+            this.httpService.get(outputUrl, {
+              responseType: 'arraybuffer',
+              maxBodyLength: Infinity,
+              maxContentLength: Infinity,
+            }),
+          );
+
+          const videoBuffer = Buffer.from(videoResponse.data);
+
+          const uploadResult = await this.cloudinaryService.uploadRenderedVideo(
+            videoBuffer,
+            job.userId,
+            job.nexrenderJobId,
+          );
+
           await this.prisma.renderJob.update({
             where: { id: job.id },
             data: {
-              status,
-              nexrenderOutputUrl: response.data.output?.url,
-              error: response.data.error,
+              status: 'COMPLETED',
+              outputUrl: uploadResult.secure_url,
+              nexrenderOutputUrl: outputUrl,
             },
           });
+
+          return {
+            ...job,
+            status: 'COMPLETED',
+            outputUrl: uploadResult.secure_url,
+            nexrenderOutputUrl: outputUrl,
+            progress: 100,
+          };
+        } catch (uploadError) {
+          this.logger.error('Failed to upload to Cloudinary:', uploadError);
+          
+          await this.prisma.renderJob.update({
+            where: { id: job.id },
+            data: {
+              status: 'COMPLETED',
+              nexrenderOutputUrl: outputUrl,
+              outputUrl: outputUrl, // Use Nexrender URL as fallback
+            },
+          });
+
+          return {
+            ...job,
+            status: 'COMPLETED',
+            outputUrl: outputUrl,
+            nexrenderOutputUrl: outputUrl,
+            progress: 100,
+          };
         }
-
-        return {
-          ...job,
-          status,
-          nexrenderOutputUrl: response.data.output?.url,
-          nexrenderState: response.data.state,
-          progress: response.data.progress,
-        };
-      } catch (error) {
-        this.logger.warn('Failed to get Nexrender job status', error);
-        // Return database status if API call fails
       }
-    }
 
-    return job;
+      // ✅ If progress is 100 but still no output, wait a bit more
+      if (progress === 100 && !outputUrl) {
+        this.logger.log('Progress is 100% but no output URL yet, waiting for Nexrender to finalize...');
+        status = 'PROCESSING';
+      }
+
+      // Update job if status changed
+      if (status !== job.status) {
+        await this.prisma.renderJob.update({
+          where: { id: job.id },
+          data: {
+            status,
+            nexrenderOutputUrl: outputUrl || job.nexrenderOutputUrl,
+          },
+        });
+      }
+
+      return {
+        ...job,
+        status,
+        outputUrl: job.outputUrl || outputUrl,
+        nexrenderOutputUrl: outputUrl,
+        nexrenderState: state,
+        progress,
+      };
+    } catch (error) {
+      this.logger.error('Failed to get Nexrender job status:', error);
+      // Return database status if API call fails
+    }
   }
 
+  return job;
+}
+//testing
   /**
    * Handle render completion webhook
    */

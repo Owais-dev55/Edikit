@@ -1,69 +1,56 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Upload,
   Sparkles,
   Download,
-  Play,
   Loader2,
+  X,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { templates } from "@/utils/constant";
 import api from "@/lib/auth";
-import { showInfoToast } from "@/components/Toast/showToast";
+import { showInfoToast, showErrorToast } from "@/components/Toast/showToast";
 
-const templateData: Record<string, any> = {
-  "1": {
-    title: "Product Launch",
-    category: "Marketing",
-    duration: "15s",
-    thumbnail: "/modern-product-launch-animation-dark-background.jpg",
-  },
-  "2": {
-    title: "Social Media Promo",
-    category: "Social",
-    duration: "10s",
-    thumbnail: "/social-media-promotional-video-template-vibrant.jpg",
-  },
-  "3": {
-    title: "Logo Reveal",
-    category: "Branding",
-    duration: "8s",
-    thumbnail: "/elegant-logo-reveal-animation.jpg",
-  },
-};
+interface FormDataState {
+  [key: string]: string | File | null;
+}
+
+interface RenderJob {
+  id: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  outputUrl?: string;
+  progress?: number;
+  error?: string;
+}
 
 const CustomizePage = () => {
   const params = useParams();
   const router = useRouter();
+  const templateId = parseInt(params.id as string);
 
-  const templateId = params.id as string;
-  const template = templateData[templateId] || templateData["1"];
+  const template = templates.find((t) => t.id === templateId);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
-  
-  
-  const [formData, setFormData] = useState({
-    headline: "Your Product Name",
-    subheadline: "Launching Soon",
-    description: "Get ready for something amazing",
-    primaryColor: "#8b5cf6",
-    secondaryColor: "#6366f1",
-    logo: null as File | null,
-  });
-  
-  const isFieldsEmpty =
-    !formData.headline ||
-    !formData.subheadline ||
-    !formData.description;
+  const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
+  const [formData, setFormData] = useState<FormDataState>({});
+  const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
+  const [uploadedAssets, setUploadedAssets] = useState<{ [key: string]: string }>({});
 
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  // Redirect if template not found
+  useEffect(() => {
+    if (!template) {
+      router.push("/templates");
+    }
+  }, [template, router]);
 
+  // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -78,23 +65,128 @@ const CustomizePage = () => {
         setAuthLoading(false);
       }
     };
-
     checkAuth();
   }, []);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData({ ...formData, logo: file });
+  // Initialize form data
+  useEffect(() => {
+    if (template) {
+      const initialData: FormDataState = {};
+      Object.keys(template.fields).forEach((key) => {
+        initialData[key] = "";
+      });
+      setFormData(initialData);
+    }
+  }, [template]);
+
+  // Poll job status
+  useEffect(() => {
+    if (!renderJob || renderJob.status === "COMPLETED" || renderJob.status === "FAILED") {
+      return;
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data } = await api.get(`/render/job/${renderJob.id}`, {
+          withCredentials: true,
+        });
+        
+        setRenderJob(data);
+
+        if (data.status === "COMPLETED") {
+          showInfoToast("Video rendered successfully!");
+          clearInterval(pollInterval);
+        } else if (data.status === "FAILED") {
+          showErrorToast(data.error || "Rendering failed");
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        console.error("Failed to poll job status:", error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [renderJob]);
+
+  const handleTextChange = (fieldKey: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [fieldKey]: value }));
+  };
+
+  const handleFileUpload = async (fieldKey: string, file: File | null) => {
+    if (!file) return;
+
+    setFormData((prev) => ({ ...prev, [fieldKey]: file }));
+
+    // Create preview
+    if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
+        setFilePreviews((prev) => ({
+          ...prev,
+          [fieldKey]: reader.result as string,
+        }));
       };
       reader.readAsDataURL(file);
+    } else if (file.type.startsWith("video/")) {
+      const videoUrl = URL.createObjectURL(file);
+      setFilePreviews((prev) => ({ ...prev, [fieldKey]: videoUrl }));
+    }
+
+    // Upload to backend immediately
+    await uploadSingleAsset(fieldKey, file);
+  };
+
+  const uploadSingleAsset = async (fieldKey: string, file: File) => {
+    if (!isLoggedIn) return;
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("files", file);
+
+      const { data } = await api.post("/render/upload-asset", formDataToSend, {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true,
+      });
+
+      // Store the Cloudinary URL
+      setUploadedAssets((prev) => ({
+        ...prev,
+        [fieldKey]: data.urls[0],
+      }));
+
+      showInfoToast(`${fieldKey} uploaded successfully`);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      showErrorToast(`Failed to upload ${fieldKey}`);
     }
   };
 
-  const handleGeneratePreview = () => {
+  const removeFile = (fieldKey: string) => {
+    setFormData((prev) => ({ ...prev, [fieldKey]: null }));
+    setFilePreviews((prev) => {
+      const newPreviews = { ...prev };
+      delete newPreviews[fieldKey];
+      return newPreviews;
+    });
+    setUploadedAssets((prev) => {
+      const newAssets = { ...prev };
+      delete newAssets[fieldKey];
+      return newAssets;
+    });
+  };
+
+  const hasRequiredFields = () => {
+    if (!template) return false;
+    return Object.entries(template.fields).every(([key, field]) => {
+      if (field.required) {
+        const value = formData[key];
+        return value !== "" && value !== null;
+      }
+      return true;
+    });
+  };
+
+  const handleGeneratePreview = async () => {
     if (!isLoggedIn) {
       showInfoToast("Please log in to generate preview");
       router.push("/login");
@@ -102,13 +194,62 @@ const CustomizePage = () => {
     }
 
     setIsGenerating(true);
-    setTimeout(() => {
-      setGeneratedVideo(
-        "/placeholder.svg?height=480&width=854&text=Generated+Video+Preview"
+
+    try {
+      // Build the DTO matching your CreateRenderJobDto
+      const renderDto: any = {};
+
+      // Map text fields
+      Object.entries(template!.fields).forEach(([key, field]) => {
+        if (field.type === "text") {
+          const value = formData[key] as string;
+          if (value) {
+            renderDto[key] = value;
+          }
+        } else if (field.type === "image" || field.type === "video") {
+          // Use uploaded Cloudinary URLs
+          if (uploadedAssets[key]) {
+            renderDto[key] = uploadedAssets[key];
+          }
+        }
+      });
+
+      // Submit render job
+      const { data } = await api.post(
+        `/render/create-job/${templateId}`,
+        renderDto,
+        {
+          withCredentials: true,
+        }
       );
+
+      setRenderJob(data);
+      showInfoToast("Render job submitted! Processing...");
+    } catch (error: any) {
+      console.error("Failed to create render job:", error);
+      showErrorToast(
+        error.response?.data?.message || "Failed to create render job"
+      );
+    } finally {
       setIsGenerating(false);
-    }, 3000);
+    }
   };
+
+  const handleDownload = async () => {
+    if (!renderJob?.outputUrl) return;
+
+    try {
+      // Open video URL in new tab for download
+      window.open(renderJob.outputUrl, "_blank");
+    } catch (error) {
+      console.error("Failed to download video:", error);
+      showErrorToast("Failed to download video");
+    }
+  };
+
+  if (!template) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -122,221 +263,281 @@ const CustomizePage = () => {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-          {/* Left Column - Customization Form */}
+          {/* Left Column - Dynamic Form */}
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
-                {template.title}
+                {template.name}
               </h1>
-              <p className="text-muted-foreground">
-                Customize your video template
-              </p>
+              <p className="text-muted-foreground">{template.description}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
+                  {template.category}
+                </span>
+              </div>
             </div>
 
             <div className="p-6 rounded-lg border border-border bg-card space-y-6">
-              {/* Text Inputs */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="headline"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Headline
-                  </label>
-                  <input
-                    id="headline"
-                    type="text"
-                    value={formData.headline}
-                    onChange={(e) =>
-                      setFormData({ ...formData, headline: e.target.value })
-                    }
-                    className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Enter main headline"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    htmlFor="subheadline"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Subheadline
-                  </label>
-                  <input
-                    id="subheadline"
-                    type="text"
-                    value={formData.subheadline}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subheadline: e.target.value })
-                    }
-                    className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Enter subheadline"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    htmlFor="description"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                    placeholder="Enter description"
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              {/* Logo Upload */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Logo
-                </label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                    id="logo-upload"
-                  />
-                  <label htmlFor="logo-upload" className="cursor-pointer">
-                    {logoPreview ? (
-                      <div className="space-y-3">
-                        <img
-                          src={logoPreview || "/placeholder.svg"}
-                          alt="Logo preview"
-                          className="w-24 h-24 mx-auto object-contain"
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          Click to change logo
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="w-12 h-12 rounded-full bg-muted mx-auto flex items-center justify-center">
-                          <Upload className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Upload your logo
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            PNG, JPG or SVG (max. 5MB)
-                          </p>
-                        </div>
-                      </div>
+              {/* Dynamic Fields */}
+              {Object.entries(template.fields).map(([fieldKey, field]) => (
+                <div key={fieldKey} className="space-y-2">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    {field.label}
+                    {field.required && (
+                      <span className="text-red-500 text-xs">*</span>
+                    )}
+                    {field.dimensions && (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        ({field.dimensions})
+                      </span>
+                    )}
+                    {uploadedAssets[fieldKey] && (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
                     )}
                   </label>
-                </div>
-              </div>
 
-              {/* Color Pickers */}
-              <div className="grid lg:grid-cols-2 sm:grid-cols-1 md:grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="primaryColor"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Primary Color
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="primaryColor"
-                      type="color"
-                      value={formData.primaryColor}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          primaryColor: e.target.value,
-                        })
-                      }
-                      className="w-16 h-10 p-1 rounded-lg border border-border cursor-pointer"
-                    />
-                    <input
-                      value={formData.primaryColor}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          primaryColor: e.target.value,
-                        })
-                      }
-                      className="flex-1 h-10 px-3 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
-                </div>
+                  {/* Text Input */}
+                  {field.type === "text" && (
+                    <div>
+                      <input
+                        type="text"
+                        value={(formData[fieldKey] as string) || ""}
+                        onChange={(e) =>
+                          handleTextChange(fieldKey, e.target.value)
+                        }
+                        maxLength={field.maxLength}
+                        className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                      />
+                      {field.maxLength && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {((formData[fieldKey] as string) || "").length} /{" "}
+                          {field.maxLength} characters
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                <div className="space-y-2">
-                  <label
-                    htmlFor="secondaryColor"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Secondary Color
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="secondaryColor"
-                      type="color"
-                      value={formData.secondaryColor}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          secondaryColor: e.target.value,
-                        })
-                      }
-                      className="w-16 h-10 p-1 rounded-lg border border-border cursor-pointer"
-                    />
-                    <input
-                      value={formData.secondaryColor}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          secondaryColor: e.target.value,
-                        })
-                      }
-                      className="flex-1 h-10 px-3 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                  </div>
+                  {/* Image Upload */}
+                  {field.type === "image" && (
+                    <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary/50 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        onChange={(e) =>
+                          handleFileUpload(
+                            fieldKey,
+                            e.target.files?.[0] || null
+                          )
+                        }
+                        className="hidden"
+                        id={`upload-${fieldKey}`}
+                      />
+
+                      {filePreviews[fieldKey] ? (
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <img
+                              src={filePreviews[fieldKey]}
+                              alt={`${field.label} preview`}
+                              className="w-full h-40 object-cover rounded-lg"
+                            />
+                            <button
+                              onClick={() => removeFile(fieldKey)}
+                              className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                              type="button"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <label
+                            htmlFor={`upload-${fieldKey}`}
+                            className="text-xs text-center block text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                          >
+                            Click to change image
+                          </label>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor={`upload-${fieldKey}`}
+                          className="cursor-pointer block text-center"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-muted mx-auto flex items-center justify-center mb-2">
+                            <Upload className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                          <p className="text-sm font-medium text-foreground">
+                            Upload {field.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            PNG, JPG (max. 5MB)
+                            {field.dimensions && ` • ${field.dimensions}`}
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Video Upload */}
+                  {field.type === "video" && (
+                    <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary/50 transition-colors">
+                      <input
+                        type="file"
+                        accept="video/mp4,video/quicktime"
+                        onChange={(e) =>
+                          handleFileUpload(
+                            fieldKey,
+                            e.target.files?.[0] || null
+                          )
+                        }
+                        className="hidden"
+                        id={`upload-${fieldKey}`}
+                      />
+
+                      {filePreviews[fieldKey] ? (
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <video
+                              src={filePreviews[fieldKey]}
+                              className="w-full h-40 object-cover rounded-lg"
+                              controls
+                            />
+                            <button
+                              onClick={() => removeFile(fieldKey)}
+                              className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                              type="button"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <label
+                            htmlFor={`upload-${fieldKey}`}
+                            className="text-xs text-center block text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                          >
+                            Click to change video
+                          </label>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor={`upload-${fieldKey}`}
+                          className="cursor-pointer block text-center"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-muted mx-auto flex items-center justify-center mb-2">
+                            <Upload className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                          <p className="text-sm font-medium text-foreground">
+                            Upload {field.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            MP4 (max. 50MB)
+                            {field.dimensions && ` • ${field.dimensions}`}
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                  )}
                 </div>
+              ))}
+
+              {/* Dimension Disclaimer */}
+              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  💡 <strong>Note:</strong> Empty fields will keep the
+                  template&apos;s default appearance. Files are uploaded
+                  automatically when selected.
+                </p>
               </div>
             </div>
 
+            {/* Render Status */}
+            {renderJob && (
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <div className="flex items-center gap-3">
+                  {renderJob.status === "PENDING" && (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                      <div>
+                        <p className="font-medium">Job Submitted</p>
+                        <p className="text-sm text-muted-foreground">
+                          Waiting to start...
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {renderJob.status === "PROCESSING" && (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      <div>
+                        <p className="font-medium">Rendering</p>
+                        <p className="text-sm text-muted-foreground">
+                          {renderJob.progress
+                            ? `${renderJob.progress}% complete`
+                            : "Processing your video..."}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {renderJob.status === "COMPLETED" && (
+                    <>
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <div>
+                        <p className="font-medium">Completed!</p>
+                        <p className="text-sm text-muted-foreground">
+                          Your video is ready
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {renderJob.status === "FAILED" && (
+                    <>
+                      <AlertCircle className="w-5 h-5 text-red-500" />
+                      <div>
+                        <p className="font-medium">Failed</p>
+                        <p className="text-sm text-muted-foreground">
+                          {renderJob.error || "Something went wrong"}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Generate Button */}
             {authLoading ? (
-              <div className="w-full h-10 rounded-lg bg-gray-300 dark:bg-gray-700 animate-pulse" />
+              <div className="w-full h-12 rounded-lg bg-gray-300 dark:bg-gray-700 animate-pulse" />
             ) : (
               <button
                 onClick={handleGeneratePreview}
-                disabled={isGenerating || authLoading || isFieldsEmpty}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={
+                  isGenerating ||
+                  authLoading ||
+                  !hasRequiredFields() ||
+                  (renderJob?.status === "PENDING" ||
+                    renderJob?.status === "PROCESSING")
+                }
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating Preview...
+                    Submitting Job...
                   </>
                 ) : isLoggedIn ? (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Generate Preview
+                    Render Video
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Login to Generate Preview
+                    Login to Render
                   </>
                 )}
               </button>
             )}
           </div>
 
-          {/* Right Column - Video Preview */}
+          {/* Right Column - Preview */}
           <div className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
             <div className="p-6 rounded-lg border border-border bg-card">
               <div className="space-y-4">
@@ -344,100 +545,37 @@ const CustomizePage = () => {
                   Preview
                 </h2>
 
-                {/* Video Player */}
                 <div className="aspect-video bg-muted rounded-lg overflow-hidden relative border border-border">
-                  {generatedVideo ? (
-                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-muted to-background">
-                      <div className="text-center space-y-4">
-                        <div
-                          className="w-full h-full flex items-center justify-center"
-                          style={{
-                            background: `linear-gradient(135deg, ${formData.primaryColor}33, ${formData.secondaryColor}33)`,
-                          }}
-                        >
-                          <div className="space-y-6 p-8">
-                            {logoPreview && (
-                              <img
-                                src={logoPreview || "/placeholder.svg"}
-                                alt="Logo"
-                                className="w-20 h-20 mx-auto object-contain"
-                              />
-                            )}
-                            <div className="space-y-2">
-                              <h3
-                                className="text-2xl font-bold"
-                                style={{ color: formData.primaryColor }}
-                              >
-                                {formData.headline}
-                              </h3>
-                              <p
-                                className="text-lg"
-                                style={{ color: formData.secondaryColor }}
-                              >
-                                {formData.subheadline}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {formData.description}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  {renderJob?.status === "COMPLETED" && renderJob.outputUrl ? (
+                    <video
+                      src={renderJob.outputUrl}
+                      className="w-full h-full object-cover"
+                      controls
+                      autoPlay
+                      loop
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-center space-y-4">
-                        <div className="w-20 h-20 rounded-full bg-muted mx-auto flex items-center justify-center border-2 border-border">
-                          <Play className="w-10 h-10 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            No preview yet
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Generate a preview to see your video
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <video
+                      src={template.previewUrl}
+                      poster={template.thumbnail}
+                      className="w-full h-full object-cover"
+                      controls
+                      autoPlay
+                      loop
+                      muted
+                    />
                   )}
                 </div>
 
-                {/* Action Buttons */}
-                {generatedVideo && (
-                  <div className="flex gap-3">
-                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border bg-transparent text-foreground font-medium hover:bg-accent transition-colors">
-                      <Play className="w-4 h-4" />
-                      Play
-                    </button>
-                    <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border bg-transparent text-foreground font-medium hover:bg-accent transition-colors">
-                      <Download className="w-4 h-4" />
-                      Download HD
-                    </button>
-                  </div>
+                {renderJob?.status === "COMPLETED" && renderJob.outputUrl && (
+                  <button
+                    onClick={handleDownload}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Video
+                  </button>
                 )}
-
-                {/* Template Info */}
-                <div className="pt-4 border-t border-border space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="text-foreground font-medium">
-                      {template.duration}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Resolution</span>
-                    <span className="text-foreground font-medium">
-                      1920 × 1080
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Format</span>
-                    <span className="text-foreground font-medium">
-                      MP4, MOV
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -454,11 +592,11 @@ const CustomizePage = () => {
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    .mov format support
+                    Remove watermark
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    with transparent backgrounds
+                    Transparent backgrounds
                   </li>
                 </ul>
                 <Link

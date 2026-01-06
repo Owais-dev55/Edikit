@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   ParseIntPipe,
   BadRequestException,
+  Logger
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
@@ -30,7 +31,9 @@ import { ConfigService } from '@nestjs/config';
 @Controller('render')
 @UseGuards(JwtAuthGuard)
 export class RenderController {
+  private readonly logger = new Logger(RenderController.name);
   constructor(
+
     private readonly renderService: RenderService,
     private readonly configService: ConfigService,
   ) {}
@@ -99,37 +102,45 @@ export class RenderController {
   }
 
   @Post('create-job/:templateId')
-  @ApiOperation({ summary: 'Create render job' })
-  @ApiCookieAuth()
-  @ApiResponse({
-    status: 201,
-    description: 'Render job created successfully',
-  })
-  async createJob(
-    @Param('templateId', ParseIntPipe) templateId: number,
-    @CurrentUser('userId') userId: string,
-    @Body() dto: CreateRenderJobDto,
-  ) {
-    // Build webhook URL
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-    const baseUrl =
-      nodeEnv === 'production'
-        ? this.configService.get<string>('RENDER_EXTERNAL_URL') || frontendUrl
-        : `http://localhost:${this.configService.get<string>('PORT', '3000')}`;
-
-    const webhookUrl = `${baseUrl}/render/webhook`;
-
-    const job = await this.renderService.createRenderJob(
-      userId,
-      templateId,
-      dto,
-      webhookUrl,
-    );
-
-    return job;
+@ApiOperation({ summary: 'Create render job' })
+@ApiCookieAuth()
+@ApiResponse({
+  status: 201,
+  description: 'Render job created successfully',
+})
+async createJob(
+  @Param('templateId', ParseIntPipe) templateId: number,
+  @CurrentUser('userId') userId: string,
+  @Body() dto: CreateRenderJobDto,
+) {
+  const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+  
+  // ✅ IMPROVED WEBHOOK URL LOGIC
+  let webhookUrl: string;
+  
+  if (nodeEnv === 'production') {
+    // Production: Use your deployed backend URL
+    const backendUrl = this.configService.get<string>('BACKEND_URL') || 
+                       this.configService.get<string>('RENDER_EXTERNAL_URL');
+    webhookUrl = `${backendUrl}/render/webhook`;
+  } else {
+    // Development: Use ngrok or your local tunnel
+    const localUrl = this.configService.get<string>('NGROK_URL') || 
+                     `http://localhost:${this.configService.get<string>('PORT', '3001')}`;
+    webhookUrl = `${localUrl}/render/webhook`;
   }
+
+  this.logger.log(`Using webhook URL: ${webhookUrl}`);
+
+  const job = await this.renderService.createRenderJob(
+    userId,
+    templateId,
+    dto,
+    webhookUrl,
+  );
+
+  return job;
+}
 
   @Get('job/:id')
   @ApiOperation({ summary: 'Get render job status' })
@@ -147,36 +158,46 @@ export class RenderController {
   }
 
   @Public()
-  @Post('webhook')
-  @ApiOperation({ summary: 'Nexrender Cloud webhook handler' })
-  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
-  async handleWebhook(
-    @Body()
-    body: {
-      id?: string;
-      state?: string;
-      output?: { url?: string };
-      error?: string;
-    },
-  ) {
-    // Webhook from Nexrender Cloud
-    const { id, state, output, error } = body;
+@Post('webhook')
+@ApiOperation({ summary: 'Nexrender Cloud webhook handler' })
+@ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+async handleWebhook(
+  @Body()
+  body: {
+    id?: string;
+    state?: string;
+    output?: { url?: string };
+    error?: string;
+  },
+) {
+  // ✅ ADD DETAILED LOGGING
+  this.logger.log('=== WEBHOOK RECEIVED ===');
+  this.logger.log('Full webhook body:', JSON.stringify(body, null, 2));
+  this.logger.log('Job ID:', body.id);
+  this.logger.log('State:', body.state);
+  this.logger.log('Output URL:', body.output?.url);
+  this.logger.log('========================');
 
-    if (!id) {
-      throw new BadRequestException('Missing job ID in webhook');
-    }
+  const { id, state, output, error } = body;
 
-    const outputUrl = output?.url || '';
-
-    await this.renderService.handleRenderComplete(
-      id,
-      outputUrl,
-      state || '',
-      error,
-    );
-
-    return { success: true };
+  if (!id) {
+    this.logger.error('Missing job ID in webhook');
+    throw new BadRequestException('Missing job ID in webhook');
   }
+
+  const outputUrl = output?.url || '';
+
+  const result = await this.renderService.handleRenderComplete(
+    id,
+    outputUrl,
+    state || '',
+    error,
+  );
+
+  this.logger.log('Webhook processed result:', result);
+
+  return { success: true };
+}
 
   @Get('job/:id/video')
   @ApiOperation({ summary: 'Get optimized video URL' })
