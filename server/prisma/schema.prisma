@@ -34,6 +34,7 @@ model NexrenderTemplate {
   status       String
   compositions Json
   layers       Json?
+  layerMapping Json?  // Stores mapping: { "text1": "actual layer name", ... }
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
