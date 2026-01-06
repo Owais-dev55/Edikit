@@ -759,7 +759,6 @@ async getJobStatus(jobId: string, userId: string) {
     throw new NotFoundException('Job not found');
   }
 
-  // Check Nexrender for latest status
   if (job.nexrenderJobId) {
     try {
       this.logger.log(`Checking Nexrender status for job: ${job.nexrenderJobId}`);
@@ -775,26 +774,32 @@ async getJobStatus(jobId: string, userId: string) {
         ),
       );
 
-      // ✅ LOG THE FULL RESPONSE TO SEE THE STRUCTURE
-      this.logger.log('Full Nexrender response:', JSON.stringify(response.data, null, 2));
-
       const jobData = response.data;
       
-      // ✅ Try different possible field names
+      // Extract fields from response
       const state = jobData.state || jobData.status || jobData.renderStatus;
       const progress = jobData.progress || jobData.renderProgress || 0;
       const outputUrl = jobData.output?.url || jobData.outputUrl || jobData.result?.url;
       
-      this.logger.log(`Job details:`, {
+      this.logger.log(`Nexrender job details:`, {
         state,
         progress,
-        outputUrl,
+        hasOutputUrl: !!outputUrl,
       });
 
-      // Map states to your DB status
+      // ✅ Determine status based on progress and state
       let status = job.status;
       
-      if (state === 'finished' || state === 'completed' || state === 'done') {
+      if (progress > 0 && progress < 100) {
+        // If we have progress and it's not complete, it's processing
+        status = 'PROCESSING';
+      } else if (progress === 100 && outputUrl) {
+        // Progress is 100 AND we have output URL = completed
+        status = 'COMPLETED';
+      } else if (progress === 100 && !outputUrl) {
+        // Progress is 100 but no URL yet = still processing/finalizing
+        status = 'PROCESSING';
+      } else if (state === 'finished' || state === 'completed' || state === 'done') {
         status = 'COMPLETED';
       } else if (state === 'error' || state === 'failed') {
         status = 'FAILED';
@@ -802,14 +807,11 @@ async getJobStatus(jobId: string, userId: string) {
         status = 'PROCESSING';
       } else if (state === 'queued' || state === 'pending') {
         status = 'PENDING';
-      } else if (progress === 100 && !state) {
-        // ✅ If progress is 100 but no state, assume completed
-        status = 'COMPLETED';
       }
 
       // ✅ If completed and we have output URL, download and upload to Cloudinary
       if (status === 'COMPLETED' && outputUrl && !job.outputUrl) {
-        this.logger.log('Job completed! Downloading and uploading to Cloudinary...');
+        this.logger.log('Job completed! Downloading video from Nexrender...');
         
         try {
           const videoResponse = await firstValueFrom(
@@ -817,16 +819,21 @@ async getJobStatus(jobId: string, userId: string) {
               responseType: 'arraybuffer',
               maxBodyLength: Infinity,
               maxContentLength: Infinity,
+              timeout: 60000, // 60 second timeout for large files
             }),
           );
 
           const videoBuffer = Buffer.from(videoResponse.data);
+          this.logger.log(`Downloaded video: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`);
 
+          this.logger.log('Uploading to Cloudinary...');
           const uploadResult = await this.cloudinaryService.uploadRenderedVideo(
             videoBuffer,
             job.userId,
             job.nexrenderJobId,
           );
+
+          this.logger.log(`Uploaded to Cloudinary: ${uploadResult.secure_url}`);
 
           await this.prisma.renderJob.update({
             where: { id: job.id },
@@ -838,42 +845,45 @@ async getJobStatus(jobId: string, userId: string) {
           });
 
           return {
-            ...job,
+            id: job.id,
+            userId: job.userId,
+            templateId: job.templateId,
             status: 'COMPLETED',
             outputUrl: uploadResult.secure_url,
             nexrenderOutputUrl: outputUrl,
             progress: 100,
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
           };
         } catch (uploadError) {
-          this.logger.error('Failed to upload to Cloudinary:', uploadError);
+          this.logger.error('Failed to download/upload video:', uploadError);
           
+          // Still mark as completed with Nexrender URL
           await this.prisma.renderJob.update({
             where: { id: job.id },
             data: {
               status: 'COMPLETED',
+              outputUrl: outputUrl, // Use Nexrender URL directly
               nexrenderOutputUrl: outputUrl,
-              outputUrl: outputUrl, // Use Nexrender URL as fallback
             },
           });
 
           return {
-            ...job,
+            id: job.id,
+            userId: job.userId,
+            templateId: job.templateId,
             status: 'COMPLETED',
             outputUrl: outputUrl,
             nexrenderOutputUrl: outputUrl,
             progress: 100,
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
           };
         }
       }
 
-      // ✅ If progress is 100 but still no output, wait a bit more
-      if (progress === 100 && !outputUrl) {
-        this.logger.log('Progress is 100% but no output URL yet, waiting for Nexrender to finalize...');
-        status = 'PROCESSING';
-      }
-
-      // Update job if status changed
-      if (status !== job.status) {
+      // Update job in database
+      if (status !== job.status || (outputUrl && !job.nexrenderOutputUrl)) {
         await this.prisma.renderJob.update({
           where: { id: job.id },
           data: {
@@ -884,16 +894,19 @@ async getJobStatus(jobId: string, userId: string) {
       }
 
       return {
-        ...job,
+        id: job.id,
+        userId: job.userId,
+        templateId: job.templateId,
         status,
         outputUrl: job.outputUrl || outputUrl,
         nexrenderOutputUrl: outputUrl,
         nexrenderState: state,
         progress,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
       };
     } catch (error) {
       this.logger.error('Failed to get Nexrender job status:', error);
-      // Return database status if API call fails
     }
   }
 

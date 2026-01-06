@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -38,6 +38,7 @@ const CustomizePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
   const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
@@ -450,15 +451,15 @@ const CustomizePage = () => {
 
             {/* Render Status */}
             {renderJob && (
-              <div className="p-4 rounded-lg border border-border bg-card">
+              <div className="p-4 rounded-lg border border-border bg-card space-y-3">
                 <div className="flex items-center gap-3">
                   {renderJob.status === "PENDING" && (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">Job Submitted</p>
                         <p className="text-sm text-muted-foreground">
-                          Waiting to start...
+                          Waiting in queue...
                         </p>
                       </div>
                     </>
@@ -466,10 +467,10 @@ const CustomizePage = () => {
                   {renderJob.status === "PROCESSING" && (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">Rendering</p>
                         <p className="text-sm text-muted-foreground">
-                          {renderJob.progress
+                          {renderJob.progress !== undefined
                             ? `${renderJob.progress}% complete`
                             : "Processing your video..."}
                         </p>
@@ -479,7 +480,7 @@ const CustomizePage = () => {
                   {renderJob.status === "COMPLETED" && (
                     <>
                       <CheckCircle className="w-5 h-5 text-green-500" />
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">Completed!</p>
                         <p className="text-sm text-muted-foreground">
                           Your video is ready
@@ -490,7 +491,7 @@ const CustomizePage = () => {
                   {renderJob.status === "FAILED" && (
                     <>
                       <AlertCircle className="w-5 h-5 text-red-500" />
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">Failed</p>
                         <p className="text-sm text-muted-foreground">
                           {renderJob.error || "Something went wrong"}
@@ -499,6 +500,21 @@ const CustomizePage = () => {
                     </>
                   )}
                 </div>
+
+                {/* Progress Bar */}
+                {renderJob.status === "PROCESSING" && renderJob.progress !== undefined && (
+                  <div className="space-y-1">
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-primary h-full transition-all duration-500 ease-out"
+                        style={{ width: `${renderJob.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-right text-muted-foreground">
+                      {renderJob.progress}%
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
