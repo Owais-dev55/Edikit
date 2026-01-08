@@ -1,5 +1,3 @@
-'use client';
-
 import TemplateCard from "@/components/Overlay/TemplateCard";
 import {  templates } from "@/utils/constant";
 

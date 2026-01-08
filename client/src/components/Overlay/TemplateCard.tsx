@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Play, Loader2 } from "lucide-react";
@@ -33,14 +33,14 @@ const TemplateCard = ({
     return () => {
       if (videoRef.current) {
         videoRef.current.pause();
-        videoRef.current.src = '';
+        videoRef.current.src = "";
       }
     };
   }, []);
 
   const handleMouseEnter = () => {
     setIsHovering(true);
-    
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -69,7 +69,7 @@ const TemplateCard = ({
   const handleVideoLoaded = () => {
     setIsVideoLoaded(true);
     setIsVideoLoading(false);
-    
+
     // Auto-play if still hovering
     if (isHovering && videoRef.current) {
       videoRef.current.play().catch(() => {
@@ -84,10 +84,7 @@ const TemplateCard = ({
   };
 
   return (
-    <Link 
-      href={`/customize/${id}`}
-      className="group block"
-    >
+    <div className="group block">
       <div
         className="relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10"
         onMouseEnter={handleMouseEnter}
@@ -159,14 +156,16 @@ const TemplateCard = ({
           <p className="text-sm text-muted-foreground line-clamp-2">
             {description}
           </p>
-          
+
           {/* Button styled div */}
-          <div className="w-full h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm flex items-center justify-center">
-            Customize
+          <div className="w-full h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm flex items-center justify-center cursor-pointer">
+            <Link href={`/customize/${id}`} className="group block">
+              Customize
+            </Link>
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 

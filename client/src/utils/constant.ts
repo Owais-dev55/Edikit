@@ -8,7 +8,7 @@ export const plans = [
     price: "$0",
     period: "forever",
     description: "Perfect for trying out Edikit",
-    features: ["3 video renders per month", "720p resolution",-".mp4 format"],
+    features: ["3 video renders per month", "720p resolution",".mp4 format"],
     cta: "Start Free Trial",
     popular: false,
   },
@@ -22,7 +22,7 @@ export const plans = [
     features: [
       "50 video renders per month",
       "1080p HD resolution",
-    -".mp4 and .mov formats",
+    ".mp4 and .mov formats",
       "with transparent background",
     ],
     cta: "Select Plan",
@@ -38,7 +38,7 @@ export const plans = [
     features: [
       "500 video renders per month",
       "4K resolution",
-    -".mp4 and .mov formats",
+      ".mp4 and .mov formats",
       "with transparent background",
     ],
     cta: "Select Plan",

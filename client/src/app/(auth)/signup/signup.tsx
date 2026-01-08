@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Mail, Lock, User, LoaderCircle, Check, X } from "lucide-react";
 import Image from "next/image";
 import { GoogleIcon } from "@/components/Overlay/Svg";
-import { signupUser, handleGoogleLogin, appleLogin } from "@/lib/auth";
+import { signupUser, handleGoogleLogin} from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 import { useDispatch } from "react-redux";

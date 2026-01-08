@@ -1,10 +1,10 @@
 "use client";
 import React, { useState } from "react";
-import { Mail, Lock, LoaderCircle, Check, X } from "lucide-react";
+import { Mail, Lock, LoaderCircle, } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { AppleIcon, GoogleIcon } from "@/components/Overlay/Svg";
-import { loginUser, appleLogin } from "@/lib/auth";
+import { GoogleIcon } from "@/components/Overlay/Svg";
+import { loginUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 import { useDispatch } from "react-redux";
