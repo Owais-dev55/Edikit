@@ -26,6 +26,14 @@ enum RenderStatus {
   FAILED
 }
 
+enum CreditType {
+  PURCHASE
+  RENDER
+  REFUND
+  BONUS
+  SUBSCRIPTION
+}
+
 model NexrenderTemplate {
   id           String @id @default(uuid())
   templateId   Int    @unique
@@ -48,6 +56,7 @@ model RenderJob {
   templateId         Int
   status             RenderStatus @default(PENDING)
   nexrenderJobId     String?      @unique
+  creditsUsed        Int          @default(1)
   outputUrl          String?
   nexrenderOutputUrl String?
   error              String?
@@ -58,20 +67,24 @@ model RenderJob {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([nexrenderJobId])
   @@map("render_jobs")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  fullName  String
-  email     String   @unique
-  password  String?
-  role      Role     @default(USER)
-  avatar    String?  @default("")
-  planType  PlanType @default(FREE)
-  provider  String   @default("email")
-  googleId  String?  @unique
-  appleId   String?  @unique
+  id       String   @id @default(uuid())
+  fullName String
+  email    String   @unique
+  password String?
+  role     Role     @default(USER)
+  avatar   String?  @default("")
+  credits  Int      @default(5)
+  planType PlanType @default(FREE)
+  provider String   @default("email")
+  googleId String?  @unique
+  appleId  String?  @unique
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -80,8 +93,25 @@ model User {
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
 
-  renderJobs RenderJob[]
-  credits    Int         @default(0)
+ 
+  renderJobs         RenderJob[]
+  creditTransactions CreditTransaction[]
 
   @@map("users")
+}
+
+model CreditTransaction {
+  id          String     @id @default(cuid())
+  userId      String
+  amount      Int // Positive for credits added, negative for credits used
+  type        CreditType
+  description String?
+  renderJobId String? // Link to render job if applicable
+  createdAt   DateTime   @default(now())
+
+  // ✅ Add relation to User
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("credit_transactions")
 }

@@ -2,12 +2,13 @@ import { Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 import { UserService } from 'src/modules/user/user.service';
 import { PlanType } from '@generated/prisma/enums';
+import { CreditsService } from 'src/modules/credits/credits.service';
 
 @Injectable()
 export class StripeService {
   private stripe: Stripe;
 
-  constructor(private readonly userService: UserService) {
+  constructor(private readonly userService: UserService , private readonly creditsService : CreditsService) {
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: '2025-12-15.clover', // Fixed API version
     });
@@ -99,6 +100,12 @@ export class StripeService {
             ? new Date(subscription.current_period_end * 1000)
             : undefined,
         });
+        try {
+          await this.creditsService.upgradeSubscription(userId, planType);
+          console.log(`✅ Credits upgraded for user ${userId} to ${planType}`);
+        } catch (error) {
+          console.error(`Failed to upgrade credits:`, error);
+        }
       }
 
       return {
@@ -229,6 +236,13 @@ export class StripeService {
         : undefined,
     });
 
+     try {
+      await this.creditsService.upgradeSubscription(user.id, planType);
+      console.log(`✅ Credits upgraded for user ${user.email} to ${planType}`);
+    } catch (error) {
+      console.error(`Failed to upgrade credits:`, error);
+    }
+
     console.log(`✅ User ${user.email} subscribed to ${planType}`);
   }
 
@@ -265,6 +279,13 @@ export class StripeService {
         : undefined,
     });
 
+     try {
+      await this.creditsService.upgradeSubscription(user.id, planType);
+      console.log(`✅ Credits upgraded for user ${user.email} to ${planType}`);
+    } catch (error) {
+      console.error(`Failed to upgrade credits:`, error);
+    }
+
     console.log(`✅ User ${user.email} subscription updated to ${planType}`);
   }
 
@@ -291,6 +312,13 @@ export class StripeService {
       stripePriceId: undefined,
       stripeCurrentPeriodEnd: undefined,
     });
+
+    try {
+      await this.creditsService.upgradeSubscription(user.id, PlanType.FREE);
+      console.log(`✅ Credits downgraded for user ${user.email} to FREE`);
+    } catch (error) {
+      console.error(`Failed to downgrade credits:`, error);
+    }
 
     console.log(`✅ User ${user.email} downgraded to FREE`);
   }
@@ -358,6 +386,7 @@ export class StripeService {
       return PlanType.FREE; // $0 = FREE
     }
   }
+
   async cancelSubscription(userId: string) {
     const user = await this.userService.findOne(userId);
     if (!user.stripeSubscriptionId) {
@@ -374,7 +403,14 @@ export class StripeService {
       stripePriceId: null,
       stripeCurrentPeriodEnd: null,
     });
-
+    
+    try {
+      await this.creditsService.upgradeSubscription(userId, PlanType.FREE);
+      console.log(`✅ Credits downgraded for user ${userId} to FREE`);
+    } catch (error) {
+      console.error(`Failed to downgrade credits:`, error);
+    }
+    
     return { success: true };
   }
 }
