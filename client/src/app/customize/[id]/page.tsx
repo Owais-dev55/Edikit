@@ -41,7 +41,6 @@ const CustomizePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
   const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
@@ -597,7 +596,7 @@ const CustomizePage = () => {
                   renderJob?.status === "PENDING" ||
                   renderJob?.status === "PROCESSING"
                 }
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isGenerating ? (
                   <>
