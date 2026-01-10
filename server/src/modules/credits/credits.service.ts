@@ -115,54 +115,61 @@ export class CreditsService {
   // Add credits (for subscription upgrade)
   async addCredits(userId: string, amount: number, description: string) {
     const [user, transaction] = await this.prisma.$transaction([
-        this.prisma.user.update({
-            where: { id: userId },
-            data: {
-                credits: {
-                    increment: amount,
-                },
-            },
-        }),
-        this.prisma.creditTransaction.create({
-            data: {
-                userId,
-                amount,
-                type: 'PURCHASE',
-                description: description,
-            },
-        }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          credits: {
+            increment: amount,
+          },
+        },
+      }),
+      this.prisma.creditTransaction.create({
+        data: {
+          userId,
+          amount,
+          type: 'PURCHASE',
+          description: description,
+        },
+      }),
     ]);
-    this.logger.log(`Added ${amount} credits to user ${userId}. New balance: ${user.credits}`);
+    this.logger.log(
+      `Added ${amount} credits to user ${userId}. New balance: ${user.credits}`,
+    );
     return {
-        newBalance: user.credits,
-        transaction,
+      newBalance: user.credits,
+      transaction,
     };
   }
 
   // Upgrade subscription and reset credits
-    async upgradeSubscription(userId: string, newplanType: "FREE" | "BASIC" | "PRO") {
-        const creditLimits = this.getCreditLimitForSubscription(newplanType);
-        const user = await this.prisma.user.update({
-            where: { id: userId },
-            data: {
-                planType: newplanType,
-                credits: creditLimits,
-            },
-        });
-        await this.prisma.creditTransaction.create({
-            data: {
-                userId,
-                amount: creditLimits,
-                type: 'SUBSCRIPTION',
-                description: `Upgraded to ${newplanType} subscription with ${creditLimits} credits`,
-    }
-        });
-        this.logger.log(`Upgraded user ${userId} to ${newplanType} subscription with ${creditLimits} credits`);
-        return {
-            user
-        };
-    }
-    async getCreditHistory(userId: string) {
+  async upgradeSubscription(
+    userId: string,
+    newplanType: 'FREE' | 'BASIC' | 'PRO',
+  ) {
+    const creditLimits = this.getCreditLimitForSubscription(newplanType);
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        planType: newplanType,
+        credits: creditLimits,
+      },
+    });
+    await this.prisma.creditTransaction.create({
+      data: {
+        userId,
+        amount: creditLimits,
+        type: 'SUBSCRIPTION',
+        description: `Upgraded to ${newplanType} subscription with ${creditLimits} credits`,
+      },
+    });
+    this.logger.log(
+      `Upgraded user ${userId} to ${newplanType} subscription with ${creditLimits} credits`,
+    );
+    return {
+      user,
+    };
+  }
+  async getCreditHistory(userId: string) {
     const transactions = await this.prisma.creditTransaction.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
