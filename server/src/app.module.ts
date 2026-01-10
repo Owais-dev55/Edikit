@@ -11,6 +11,7 @@ import { KeepAliveService } from './common/services/keep-alive.service';
 import { StripeModule } from './stripe/stripe.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { RenderModule } from './modules/render/render.module';
+import { CreditsModule } from './modules/credits/credits.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { RenderModule } from './modules/render/render.module';
     StripeModule,
     CloudinaryModule,
     RenderModule,
+    CreditsModule,
   ],
   controllers: [AppController],
   providers: [AppService, KeepAliveService],

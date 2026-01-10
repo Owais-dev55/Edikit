@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, LogOut, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, ChevronDown, Coins } from "lucide-react";
 import ToogleTheme from "../Theme/theme-toogle";
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState } from "@/redux/store";
@@ -13,6 +13,7 @@ import { logoutUser } from "@/lib/auth";
 import { cancelSubscription } from "@/lib/payment";
 import type { AppDispatch } from "@/redux/store";
 import { showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
+import CreditsDisplay from "./CreditsDisplay";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -114,7 +115,11 @@ const Navbar = () => {
                   <div className="w-29 h-4 rounded bg-gray-300 dark:bg-gray-700 animate-pulse" />
                 </div>
               ) : user ? (
-                <div className="relative" ref={userMenuRef}>
+                <>
+                  {/* Credits Display */}
+                  <CreditsDisplay />
+                  
+                  <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -165,6 +170,16 @@ const Navbar = () => {
                           </span>
                         </div>
 
+                        {/* Credits Link */}
+                        <Link
+                          href="/credits"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                        >
+                          <Coins size={16} />
+                          View Credits
+                        </Link>
+
                         {/* Upgrade/Manage Plan Button */}
                         {user.planType === "FREE" ? (
                           <Link
@@ -206,6 +221,7 @@ const Navbar = () => {
                     </div>
                   )}
                 </div>
+                </>
               ) : (
                 <div>
                   <Link

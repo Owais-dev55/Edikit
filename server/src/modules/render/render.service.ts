@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
+import { CreditsService } from '../credits/credits.service';
 
 interface NexrenderTemplate {
   id: string;
@@ -54,6 +55,7 @@ export class RenderService {
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly creditsService: CreditsService,
   ) {
     this.nexrenderApiUrl = 'https://api.nexrender.com/api/v2';
     this.nexrenderApiKey =
@@ -1041,6 +1043,12 @@ export class RenderService {
     webhookUrl: string,
   ) {
     // Ensure template is uploaded
+    const hasCredits = await this.creditsService.hasEnoughCredits(userId , 1);
+
+    if (!hasCredits) {
+      throw new BadRequestException('Insufficient credits. Please upgrade your plan.');
+    }
+
     const nexrenderTemplateId = await this.ensureTemplateUploaded(templateId);
 
     // Get template info to fetch actual composition name
@@ -1085,8 +1093,18 @@ export class RenderService {
         nexrenderJobId: nexrenderJob.id,
         status: RenderStatus.PENDING,
         customizations: dto as any,
+        creditsUsed: 1,
       },
     });
+
+    // Deduct credit
+    try {
+      await this.creditsService.deductCredits(userId, 1  , job.id);
+      this.logger.log(`Deducted 1 credit from user ${userId} for job ${job.id}`);
+    } catch (error) {
+       await this.prisma.renderJob.delete({ where: { id: job.id } });
+      throw error;
+    }
 
     return job;
   }
@@ -1277,108 +1295,138 @@ export class RenderService {
   /**
    * Handle render completion webhook
    */
-  async handleRenderComplete(
-    nexrenderJobId: string,
-    outputUrl: string,
-    state: string,
-    error?: string,
-  ) {
-    const job = await this.prisma.renderJob.findUnique({
-      where: { nexrenderJobId },
-    });
+ async handleRenderComplete(
+  nexrenderJobId: string,
+  outputUrl: string,
+  state: string,
+  error?: string,
+) {
+  const job = await this.prisma.renderJob.findUnique({
+    where: { nexrenderJobId },
+  });
 
-    if (!job) {
-      this.logger.warn(`Job not found for Nexrender job ID: ${nexrenderJobId}`);
-      return null;
-    }
+  if (!job) {
+    this.logger.warn(`Job not found for Nexrender job ID: ${nexrenderJobId}`);
+    return null;
+  }
 
-    const normalizedState = (state || '').toLowerCase();
-    const isCompleted =
-      normalizedState === 'finished' ||
-      normalizedState === 'completed' ||
-      normalizedState === 'done';
+  const normalizedState = (state || '').toLowerCase();
+  const isCompleted =
+    normalizedState === 'finished' ||
+    normalizedState === 'completed' ||
+    normalizedState === 'done';
 
-    if (isCompleted && outputUrl) {
-      try {
-        this.logger.log(
-          `Processing completed render job ${job.id}, downloading from: ${outputUrl}`,
-        );
+  if (isCompleted && outputUrl) {
+    try {
+      this.logger.log(
+        `Processing completed render job ${job.id}, downloading from: ${outputUrl}`,
+      );
 
-        // Download video from Nexrender
-        const videoResponse = await firstValueFrom(
-          this.httpService.get(outputUrl, {
-            responseType: 'arraybuffer',
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            timeout: 60000, // 60 second timeout for large files
-          }),
-        );
+      // Download video from Nexrender
+      const videoResponse = await firstValueFrom(
+        this.httpService.get(outputUrl, {
+          responseType: 'arraybuffer',
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          timeout: 60000,
+        }),
+      );
 
-        const videoBuffer = Buffer.from(videoResponse.data);
-        this.logger.log(
-          `Downloaded video: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`,
-        );
+      const videoBuffer = Buffer.from(videoResponse.data);
+      this.logger.log(
+        `Downloaded video: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`,
+      );
 
-        // Upload to Cloudinary
-        const uploadResult = await this.cloudinaryService.uploadRenderedVideo(
-          videoBuffer,
-          job.userId,
-          nexrenderJobId,
-        );
+      // Upload to Cloudinary
+      const uploadResult = await this.cloudinaryService.uploadRenderedVideo(
+        videoBuffer,
+        job.userId,
+        nexrenderJobId,
+      );
 
-        this.logger.log(`Uploaded to Cloudinary: ${uploadResult.secure_url}`);
+      this.logger.log(`Uploaded to Cloudinary: ${uploadResult.secure_url}`);
 
-        // Update job
-        await this.prisma.renderJob.update({
-          where: { id: job.id },
-          data: {
-            status: RenderStatus.COMPLETED,
-            outputUrl: uploadResult.secure_url,
-            nexrenderOutputUrl: outputUrl,
-          },
-        });
-
-        return {
-          jobId: job.id,
+      // Update job
+      await this.prisma.renderJob.update({
+        where: { id: job.id },
+        data: {
+          status: RenderStatus.COMPLETED,
           outputUrl: uploadResult.secure_url,
-        };
-      } catch (error: unknown) {
-        this.logger.error('Failed to process render completion', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          jobId: job.id,
-          nexrenderJobId,
-        });
+          nexrenderOutputUrl: outputUrl,
+        },
+      });
 
-        // Store error but keep Nexrender URL as fallback
-        await this.prisma.renderJob.update({
-          where: { id: job.id },
-          data: {
-            status: RenderStatus.FAILED,
-            error: `Failed to upload video: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
-            nexrenderOutputUrl: outputUrl,
-          },
-        });
-        throw error;
+      return {
+        jobId: job.id,
+        outputUrl: uploadResult.secure_url,
+      };
+    } catch (error: unknown) {
+      this.logger.error('Failed to process render completion', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        jobId: job.id,
+        nexrenderJobId,
+      });
+
+      // ✅ REFUND CREDITS ON UPLOAD FAILURE
+      try {
+        await this.creditsService.refundCredits(
+          job.userId,
+          job.creditsUsed,
+          job.id,
+        );
+        this.logger.log(
+          `Refunded ${job.creditsUsed} credit(s) for failed upload on job ${job.id}`,
+        );
+      } catch (refundError) {
+        this.logger.error('Failed to refund credits:', refundError);
       }
-    } else if (normalizedState === 'error' || normalizedState === 'failed') {
-      this.logger.error(`Render job failed: ${nexrenderJobId}`, { error });
+
+      // Store error
       await this.prisma.renderJob.update({
         where: { id: job.id },
         data: {
           status: RenderStatus.FAILED,
-          error: error || 'Render failed',
+          error: `Failed to upload video: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
+          nexrenderOutputUrl: outputUrl,
         },
       });
-    } else {
-      this.logger.log(
-        `Render job ${nexrenderJobId} state: ${state} (not completed yet)`,
-      );
+      throw error;
     }
+  } else if (normalizedState === 'error' || normalizedState === 'failed') {
+    // ✅ REFUND CREDITS ON RENDER FAILURE
+    this.logger.error(`Render job failed: ${nexrenderJobId}`, { error });
+    
+    await this.prisma.renderJob.update({
+      where: { id: job.id },
+      data: {
+        status: RenderStatus.FAILED,
+        error: error || 'Render failed',
+      },
+    });
 
-    return null;
+    // Refund credits
+    try {
+      await this.creditsService.refundCredits(
+        job.userId,
+        job.creditsUsed,
+        job.id,
+      );
+      this.logger.log(
+        `Refunded ${job.creditsUsed} credit(s) for failed render on job ${job.id}`,
+      );
+    } catch (refundError) {
+      this.logger.error('Failed to refund credits:', refundError);
+    }
+  } else {
+    this.logger.log(
+      `Render job ${nexrenderJobId} state: ${state} (not completed yet)`,
+    );
   }
+
+  return null;
+}
 
   /**
    * Get optimized video URL
