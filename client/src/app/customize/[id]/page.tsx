@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { templates } from "@/utils/constant";
 import api from "@/lib/auth";
-import { showInfoToast, showErrorToast } from "@/components/Toast/showToast";
+import { showInfoToast, showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
 import Image from "next/image";
 
 interface FormDataState {
@@ -51,6 +51,8 @@ const CustomizePage = () => {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   // Redirect if template not found
   useEffect(() => {
@@ -301,11 +303,58 @@ const CustomizePage = () => {
   const handleDownload = async () => {
     if (!renderJob?.outputUrl) return;
 
+    setIsDownloading(true);
+    setDownloadProgress(0);
+
     try {
-      window.open(renderJob.outputUrl, "_blank");
+      const xhr = new XMLHttpRequest();
+
+      xhr.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setDownloadProgress(percentComplete);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+          const blob = new Blob([xhr.response], { type: 'video/mp4' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          const timestamp = new Date().toISOString().slice(0, 10);
+          link.download = `video-${timestamp}.mp4`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          showInfoToast('Video downloaded successfully!');
+        } else {
+          showErrorToast('Failed to download video');
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        console.error('Download failed:', xhr.status);
+        showErrorToast('Download failed. Please try again.');
+      });
+
+      xhr.addEventListener('abort', () => {
+        showErrorToast('Download cancelled');
+      });
+
+      xhr.open('GET', renderJob.outputUrl);
+      xhr.responseType = 'arraybuffer';
+      // Don't include credentials for public Cloudinary URLs (CORS friendly)
+      xhr.send();
     } catch (error) {
-      console.error("Failed to download video:", error);
-      showErrorToast("Failed to download video");
+      console.error('Failed to download video:', error);
+      showErrorToast('Failed to download video');
+    } finally {
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress(0);
+      }, 1000);
     }
   };
 
@@ -583,10 +632,46 @@ const CustomizePage = () => {
               </div>
             )}
 
-            {/* Generate Button */}
+            {/* Generate/Download Button */}
             {authLoading ? (
               <div className="w-full h-12 rounded-lg bg-gray-300 dark:bg-gray-700 animate-pulse" />
+            ) : showRenderedVideo ? (
+              // Show Download Button when video is ready
+              <div className="space-y-3">
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-linear-to-r from-primary to-primary/90 text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl cursor-pointer"
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Downloading... {downloadProgress}%
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Download Video
+                    </>
+                  )}
+                </button>
+
+                {isDownloading && downloadProgress > 0 && (
+                  <div className="space-y-1">
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-primary h-full transition-all duration-300"
+                        style={{ width: `${downloadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground">
+                      {downloadProgress}% downloaded
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : (
+              // Show Render Button
               <button
                 onClick={handleGeneratePreview}
                 disabled={
@@ -714,16 +799,6 @@ const CustomizePage = () => {
                     </>
                   )}
                 </div>
-
-                {showRenderedVideo && (
-                  <button
-                    onClick={handleDownload}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download Video
-                  </button>
-                )}
               </div>
             </div>
 

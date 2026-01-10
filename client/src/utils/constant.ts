@@ -46,30 +46,6 @@ export const plans = [
   },
 ];
 
-export const faqs = [
-  {
-    question: "Can I cancel my subscription anytime?",
-    answer:
-      "Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period.",
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer:
-      "We accept all major credit cards (Visa, MasterCard, American Express) and PayPal for your convenience.",
-  },
-  {
-    question: "Do you offer refunds?",
-    answer:
-      "Yes, we offer a 14-day money-back guarantee. If you're not satisfied, contact us for a full refund.",
-  },
-  {
-    question: "Can I upgrade or downgrade my plan?",
-    answer:
-      "You can change your plan at any time. Changes will be prorated on your next billing cycle.",
-  },
-];
-
-
 export const categories = [
   "All",
   "Marketing",
@@ -194,6 +170,7 @@ export const templates: Template[] = [
     fields: {
       text1: { type: "text", label: "Text 1", maxLength: 50, required: true },
       text2: { type: "text", label: "Text 2", maxLength: 50, required: true },
+      text3: { type: "text", label: "Text 3", maxLength: 50, required: true },
       background: { type: "image", label: "Background", dimensions: "1080x1920", required: false },
     }
   },
