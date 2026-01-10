@@ -7,7 +7,7 @@ import { PrismaModule } from '../../common/prisma/prisma.module';
 import { CreditsModule } from '../credits/credits.module';
 
 @Module({
-  imports: [HttpModule, CloudinaryModule, PrismaModule , CreditsModule],
+  imports: [HttpModule, CloudinaryModule, PrismaModule, CreditsModule],
   controllers: [RenderController],
   providers: [RenderService],
   exports: [RenderService],

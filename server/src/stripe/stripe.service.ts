@@ -8,7 +8,10 @@ import { CreditsService } from 'src/modules/credits/credits.service';
 export class StripeService {
   private stripe: Stripe;
 
-  constructor(private readonly userService: UserService , private readonly creditsService : CreditsService) {
+  constructor(
+    private readonly userService: UserService,
+    private readonly creditsService: CreditsService,
+  ) {
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: '2025-12-15.clover', // Fixed API version
     });
@@ -236,7 +239,7 @@ export class StripeService {
         : undefined,
     });
 
-     try {
+    try {
       await this.creditsService.upgradeSubscription(user.id, planType);
       console.log(`✅ Credits upgraded for user ${user.email} to ${planType}`);
     } catch (error) {
@@ -279,7 +282,7 @@ export class StripeService {
         : undefined,
     });
 
-     try {
+    try {
       await this.creditsService.upgradeSubscription(user.id, planType);
       console.log(`✅ Credits upgraded for user ${user.email} to ${planType}`);
     } catch (error) {
@@ -403,14 +406,14 @@ export class StripeService {
       stripePriceId: null,
       stripeCurrentPeriodEnd: null,
     });
-    
+
     try {
       await this.creditsService.upgradeSubscription(userId, PlanType.FREE);
       console.log(`✅ Credits downgraded for user ${userId} to FREE`);
     } catch (error) {
       console.error(`Failed to downgrade credits:`, error);
     }
-    
+
     return { success: true };
   }
 }
