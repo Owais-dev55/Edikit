@@ -2,6 +2,8 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
+  Put,
   Body,
   Param,
   UseGuards,
@@ -125,9 +127,7 @@ export class RenderController {
       webhookUrl = `${backendUrl}/render/webhook`;
     } else {
       // Development: Use ngrok or your local tunnel
-      const localUrl =
-        this.configService.get<string>('NGROK_URL') ||
-        `http://localhost:${this.configService.get<string>('PORT', '3001')}`;
+      const localUrl = `http://localhost:${this.configService.get<string>('PORT', '8000')}`;
       webhookUrl = `${localUrl}/render/webhook`;
     }
 
@@ -237,19 +237,78 @@ export class RenderController {
   ) {
     const template = await this.renderService.getTemplate(templateId);
 
+    // Get layer mapping from database
+    const dbRecord = await this.renderService.getTemplateRecord(templateId);
+    const layerMapping =
+      (dbRecord as { layerMapping?: Record<string, string> })?.layerMapping ||
+      {};
+
     // Log to console for easy debugging
     this.logger.log(`=== Template ${templateId} Layer Information ===`);
     this.logger.log('Compositions:', template.compositions);
     this.logger.log('Layers:', template.layers);
+    this.logger.log('Current Layer Mapping:', layerMapping);
     this.logger.log('===============================================');
 
     return {
       templateId,
       compositions: template.compositions,
       layers: template.layers,
+      layerMapping,
       message:
         'Layer mapping is auto-generated and stored in database. Check server logs for details.',
     };
+  }
+
+  @Put('templates/:templateId/layer-mapping')
+  @ApiOperation({
+    summary: 'Manually update layer mapping for a template',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Layer mapping updated successfully',
+  })
+  async updateLayerMapping(
+    @Param('templateId', ParseIntPipe) templateId: number,
+    @Body()
+    body: {
+      layerMapping: Record<string, string>;
+    },
+  ) {
+    const result = await this.renderService.updateLayerMapping(
+      templateId,
+      body.layerMapping,
+    );
+    return {
+      message: 'Layer mapping updated successfully',
+      ...result,
+    };
+  }
+
+  @Post('templates/upload/:templateId')
+  @ApiOperation({
+    summary: 'Upload a single template to Nexrender Cloud',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Template uploaded successfully',
+  })
+  async uploadTemplate(@Param('templateId', ParseIntPipe) templateId: number) {
+    try {
+      const nexrenderId =
+        await this.renderService.ensureTemplateUploaded(templateId);
+      return {
+        message: 'Template uploaded successfully',
+        templateId,
+        nexrenderId,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to upload template',
+      );
+    }
   }
 
   @Post('templates/upload-all')
@@ -266,6 +325,50 @@ export class RenderController {
     return {
       message: 'Template upload process completed',
       results,
+    };
+  }
+
+  @Delete('templates/:templateId')
+  @ApiOperation({
+    summary: 'Delete a template from Nexrender and database',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Template deleted successfully',
+  })
+  async deleteTemplate(@Param('templateId', ParseIntPipe) templateId: number) {
+    const result = await this.renderService.deleteTemplate(templateId);
+    return {
+      message: result.success
+        ? 'Template deleted successfully'
+        : 'Template deletion failed',
+      ...result,
+    };
+  }
+
+  @Delete('templates')
+  @ApiOperation({
+    summary: 'Delete ALL templates from Nexrender and database (admin only)',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'All templates deletion process completed',
+  })
+  async deleteAllTemplates() {
+    this.logger.warn(
+      '⚠️ DELETE ALL TEMPLATES REQUESTED - This will remove all templates!',
+    );
+    const results = await this.renderService.deleteAllTemplates();
+    return {
+      message: 'Template deletion process completed',
+      results,
+      summary: {
+        total: results.length,
+        successful: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success).length,
+      },
     };
   }
 }

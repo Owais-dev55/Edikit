@@ -58,7 +58,7 @@ export class RenderService {
     this.nexrenderApiUrl = 'https://api.nexrender.com/api/v2';
     this.nexrenderApiKey =
       this.configService.get<string>('NEXRENDER_CLOUD_API_KEY') || '';
-    this.animationsPath = path.join(process.cwd(), 'assets', 'animations');
+    this.animationsPath = path.join(process.cwd(), 'animations');
 
     if (!this.nexrenderApiKey) {
       this.logger.warn('NEXRENDER_CLOUD_API_KEY is not set');
@@ -109,15 +109,24 @@ export class RenderService {
   async registerTemplate(
     templateId: number,
     displayName: string,
+    templateFilePath: string,
   ): Promise<NexrenderTemplate> {
     try {
       this.logger.log(`Registering template with Nexrender: ${displayName}`);
+
+      // Determine file type from extension
+      const fileExtension = path.extname(templateFilePath).toLowerCase();
+      const templateType = fileExtension === '.zip' ? 'zip' : 'aep';
+
+      this.logger.log(
+        `Registering template as type: ${templateType} (file: ${path.basename(templateFilePath)})`,
+      );
 
       const response = await firstValueFrom(
         this.httpService.post<NexrenderTemplate>(
           `${this.nexrenderApiUrl}/templates`,
           {
-            type: 'aep',
+            type: templateType,
             displayName,
           },
           {
@@ -330,15 +339,41 @@ export class RenderService {
     }
 
     const displayName = `Animation ${templateId}`;
-    const templateFilePath = path.join(
+
+    // Try .zip first (recommended for bundled projects), then .aep
+    let templateFilePath = path.join(
       this.animationsPath,
-      `Animation ${templateId}.aep`,
+      `Animation_${templateId}.zip`,
     );
+
+    if (!existsSync(templateFilePath)) {
+      // Try with space
+      templateFilePath = path.join(
+        this.animationsPath,
+        `Animation ${templateId}.zip`,
+      );
+    }
+
+    if (!existsSync(templateFilePath)) {
+      // Fallback to .aep
+      templateFilePath = path.join(
+        this.animationsPath,
+        `Animation ${templateId}.aep`,
+      );
+    }
+
+    if (!existsSync(templateFilePath)) {
+      // Try Animation_X format
+      templateFilePath = path.join(
+        this.animationsPath,
+        `Animation_${templateId}.aep`,
+      );
+    }
 
     // Check if template file exists
     if (!existsSync(templateFilePath)) {
       throw new NotFoundException(
-        `Template file not found: Animation ${templateId}.aep`,
+        `Template file not found: Animation ${templateId}.aep or Animation_${templateId}.zip`,
       );
     }
 
@@ -371,6 +406,7 @@ export class RenderService {
     const registeredTemplate = await this.registerTemplate(
       templateId,
       displayName,
+      templateFilePath,
     );
 
     if (!registeredTemplate.uploadInfo) {
@@ -484,6 +520,15 @@ export class RenderService {
     });
 
     return templates;
+  }
+
+  /**
+   * Get template record from database (raw)
+   */
+  async getTemplateRecord(templateId: number) {
+    return await this.prisma.nexrenderTemplate.findUnique({
+      where: { templateId },
+    });
   }
 
   /**
@@ -642,36 +687,80 @@ export class RenderService {
   ): Record<string, string> {
     const mapping: Record<string, string> = {};
 
-    // Common patterns to match
+    this.logger.log(
+      `Auto-generating layer mapping for template ${templateId} from ${layers.length} layers`,
+    );
+    this.logger.log(
+      'Available layers:',
+      layers.map((l) => l.layerName),
+    );
+
+    // Common patterns to match - expanded to catch more variations
     const patterns = {
       text1: [
         /text\s*1/i,
+        /^text\s*1$/i, // Exact match
+        /txt\s*1/i, // txt_1 format
+        /^txt\s*1$/i,
+        /txt_1/i, // txt_1 format
         /headline/i,
         /title/i,
-        /prova\s*scena\s*6/i,
         /main\s*text/i,
+        /primary\s*text/i,
+        /heading/i,
+        /prova\s*scena\s*6/i,
       ],
       text2: [
         /text\s*2/i,
+        /^text\s*2$/i, // Exact match
+        /txt\s*2/i, // txt_2 format
+        /^txt\s*2$/i,
+        /txt_2/i, // txt_2 format
         /subheadline/i,
         /subtitle/i,
-        /prova\s*scena\s*5/i,
+        /secondary\s*text/i,
         /description/i,
+        /prova\s*scena\s*5/i,
       ],
-      text3: [/text\s*3/i, /description/i, /body/i],
+      text3: [
+        /text\s*3/i,
+        /^text\s*3$/i, // Exact match
+        /description/i,
+        /body/i,
+        /tertiary\s*text/i,
+      ],
       image1: [
         /image\s*1/i,
+        /^image\s*1$/i,
+        /img\s*1/i, // img_1 format
+        /img_1/i,
         /logo/i,
         /main\s*image/i,
         /images\s*and\s*videos/i,
+        /primary\s*image/i,
       ],
-      image2: [/image\s*2/i, /img\.png/i, /secondary/i],
-      image3: [/image\s*3/i, /box\s*5/i, /icon/i],
-      icon1: [/icon\s*1/i, /social\s*icon/i],
-      icon2: [/icon\s*2/i],
-      icon3: [/icon\s*3/i],
-      icon4: [/icon\s*4/i],
-      background: [/bg\.png/i, /background/i, /backdrop/i],
+      image2: [
+        /image\s*2/i,
+        /^image\s*2$/i,
+        /img\s*2/i, // img_2 format
+        /img_2/i,
+        /img\.png/i,
+        /secondary/i,
+      ],
+      image3: [
+        /image\s*3/i,
+        /^image\s*3$/i,
+        /box\s*5/i,
+        /box\s*1/i, // box_1 format
+        /box_1/i,
+        /box_2/i,
+        /icon/i,
+      ],
+      icon1: [/icon\s*1/i, /^icon\s*1$/i, /social\s*icon/i],
+      icon2: [/icon\s*2/i, /^icon\s*2$/i],
+      icon3: [/icon\s*3/i, /^icon\s*3$/i],
+      icon4: [/icon\s*4/i, /^icon\s*4$/i],
+      background: [/bg\.png/i, /background/i, /backdrop/i, /^background$/i],
     };
 
     // Match layers to patterns
@@ -680,6 +769,9 @@ export class RenderService {
         for (const pattern of regexPatterns) {
           if (pattern.test(layer.layerName)) {
             mapping[fieldName] = layer.layerName;
+            this.logger.log(
+              `Matched ${fieldName} → "${layer.layerName}" (composition: ${layer.composition})`,
+            );
             break;
           }
         }
@@ -687,31 +779,39 @@ export class RenderService {
       }
     }
 
+    // If no text layers found, try to find any text-like layers
+    if (!mapping.text1 && !mapping.text2) {
+      const textLayers = layers.filter(
+        (l) =>
+          !l.layerName.match(/\.(png|jpg|jpeg|mp4|mov|mp3|wav)$/i) &&
+          !l.layerName.toLowerCase().includes('background') &&
+          !l.layerName.toLowerCase().includes('image') &&
+          !l.layerName.toLowerCase().includes('icon'),
+      );
+
+      if (textLayers.length > 0) {
+        this.logger.log(
+          `Found potential text layers (not matched by patterns):`,
+          textLayers.map((l) => l.layerName),
+        );
+        // Use first two as text1 and text2
+        if (textLayers[0]) {
+          mapping.text1 = textLayers[0].layerName;
+          this.logger.log(`Auto-assigned text1 → "${textLayers[0].layerName}"`);
+        }
+        if (textLayers[1]) {
+          mapping.text2 = textLayers[1].layerName;
+          this.logger.log(`Auto-assigned text2 → "${textLayers[1].layerName}"`);
+        }
+      }
+    }
+
     this.logger.log(
-      `Auto-generated layer mapping for template ${templateId}:`,
+      `Final auto-generated layer mapping for template ${templateId}:`,
       mapping,
     );
 
     return mapping;
-  }
-
-  /**
-   * Helper method to log actual layer names from Nexrender
-   * Call this after template upload to see what layer names Nexrender detected
-   */
-  async logTemplateLayers(templateId: number): Promise<void> {
-    try {
-      const template = await this.getTemplate(templateId);
-      this.logger.log(`=== Template ${templateId} Layer Names ===`);
-      this.logger.log('Compositions:', template.compositions);
-      this.logger.log('Layers:', template.layers);
-      this.logger.log('==========================================');
-      this.logger.log(
-        '⚠️ Update getLayerMapping() with these actual layer names!',
-      );
-    } catch (error) {
-      this.logger.error('Failed to log template layers:', error);
-    }
   }
 
   /**
@@ -963,6 +1063,12 @@ export class RenderService {
     // Build assets array (only includes assets if frontend provides them)
     const assets = await this.buildNexrenderAssets(dto, templateId);
 
+    // Log assets being sent for debugging
+    this.logger.log(
+      `Submitting render job with ${assets.length} assets:`,
+      JSON.stringify(assets, null, 2),
+    );
+
     // Submit job to Nexrender
     const nexrenderJob = await this.submitNexrenderJob(
       nexrenderTemplateId,
@@ -1167,7 +1273,7 @@ export class RenderService {
 
     return job;
   }
-  //testing
+
   /**
    * Handle render completion webhook
    */
@@ -1291,6 +1397,202 @@ export class RenderService {
   }
 
   /**
+   * Manually update layer mapping for a template
+   */
+  async updateLayerMapping(
+    templateId: number,
+    layerMapping: Record<string, string>,
+  ): Promise<{
+    templateId: number;
+    layerMapping: Record<string, string>;
+  }> {
+    await this.prisma.nexrenderTemplate.update({
+      where: { templateId },
+      data: {
+        layerMapping: layerMapping as any,
+      },
+    });
+
+    this.logger.log(
+      `Layer mapping updated for template ${templateId}:`,
+      layerMapping,
+    );
+
+    return {
+      templateId,
+      layerMapping,
+    };
+  }
+
+  /**
+   * Delete a template from Nexrender Cloud
+   */
+  async deleteTemplateFromNexrender(nexrenderId: string): Promise<boolean> {
+    try {
+      this.logger.log(`Deleting template from Nexrender: ${nexrenderId}`);
+
+      await firstValueFrom(
+        this.httpService.delete(
+          `${this.nexrenderApiUrl}/templates/${nexrenderId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.nexrenderApiKey}`,
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`✅ Template ${nexrenderId} deleted from Nexrender`);
+      return true;
+    } catch (error: unknown) {
+      const errorResponse = (error as any)?.response;
+      this.logger.error('Failed to delete template from Nexrender', {
+        nexrenderId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        status: errorResponse?.status,
+        data: errorResponse?.data,
+      });
+
+      // If template not found (404), consider it already deleted
+      if (errorResponse?.status === 404) {
+        this.logger.warn(
+          `Template ${nexrenderId} not found in Nexrender (may already be deleted)`,
+        );
+        return true;
+      }
+
+      throw new BadRequestException(
+        `Failed to delete template: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  /**
+   * Delete a template by templateId (from both Nexrender and database)
+   */
+  async deleteTemplate(templateId: number): Promise<{
+    success: boolean;
+    deletedFromNexrender: boolean;
+    deletedFromDatabase: boolean;
+    error?: string;
+  }> {
+    try {
+      // Get template from database
+      const template = await this.prisma.nexrenderTemplate.findUnique({
+        where: { templateId },
+      });
+
+      let deletedFromNexrender = false;
+      let deletedFromDatabase = false;
+
+      // Delete from Nexrender if nexrenderId exists
+      if (template?.nexrenderId) {
+        try {
+          await this.deleteTemplateFromNexrender(template.nexrenderId);
+          deletedFromNexrender = true;
+        } catch (error) {
+          this.logger.warn(
+            `Failed to delete template ${templateId} from Nexrender, continuing with database deletion`,
+          );
+        }
+      }
+
+      // Delete from database
+      if (template) {
+        await this.prisma.nexrenderTemplate.delete({
+          where: { templateId },
+        });
+        deletedFromDatabase = true;
+        this.logger.log(`✅ Template ${templateId} deleted from database`);
+      } else {
+        this.logger.warn(`Template ${templateId} not found in database`);
+      }
+
+      return {
+        success: true,
+        deletedFromNexrender,
+        deletedFromDatabase,
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(
+        `Failed to delete template ${templateId}:`,
+        errorMessage,
+      );
+      return {
+        success: false,
+        deletedFromNexrender: false,
+        deletedFromDatabase: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Delete all templates from Nexrender Cloud and database
+   */
+  async deleteAllTemplates(): Promise<
+    Array<{
+      templateId: number;
+      success: boolean;
+      deletedFromNexrender: boolean;
+      deletedFromDatabase: boolean;
+      error?: string;
+    }>
+  > {
+    const results: Array<{
+      templateId: number;
+      success: boolean;
+      deletedFromNexrender: boolean;
+      deletedFromDatabase: boolean;
+      error?: string;
+    }> = [];
+
+    // Get all templates from database
+    const templates = await this.prisma.nexrenderTemplate.findMany({
+      select: {
+        templateId: true,
+        nexrenderId: true,
+      },
+    });
+
+    this.logger.log(`Found ${templates.length} templates to delete`);
+
+    for (const template of templates) {
+      try {
+        this.logger.log(`Deleting template ${template.templateId}...`);
+
+        const result = await this.deleteTemplate(template.templateId);
+        results.push({
+          templateId: template.templateId,
+          ...result,
+        });
+
+        // Small delay between deletions to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(
+          `Failed to delete template ${template.templateId}: ${errorMessage}`,
+        );
+        results.push({
+          templateId: template.templateId,
+          success: false,
+          deletedFromNexrender: false,
+          deletedFromDatabase: false,
+          error: errorMessage,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Upload all templates to Nexrender Cloud
    * This should be called once to initialize all templates
    */
@@ -1309,15 +1611,20 @@ export class RenderService {
       error?: string;
     }> = [];
 
-    // Find all .aep files in animations folder
+    // Find all .aep and .zip files in animations folder
     const files = await fs.readdir(this.animationsPath);
-    const aepFiles = files.filter((f) => f.endsWith('.aep'));
+    const templateFiles = files.filter(
+      (f) => f.endsWith('.aep') || f.endsWith('.zip'),
+    );
 
-    this.logger.log(`Found ${aepFiles.length} .aep files to upload`);
+    this.logger.log(
+      `Found ${templateFiles.length} template files (.aep/.zip) to upload`,
+    );
 
-    for (const file of aepFiles) {
-      // Extract template ID from filename (e.g., "Animation 1.aep" -> 1)
-      const match = file.match(/Animation\s+(\d+)\.aep/i);
+    for (const file of templateFiles) {
+      // Extract template ID from filename
+      // Matches: "Animation 1.aep", "Animation_1.zip", "Animation1.aep", etc.
+      const match = file.match(/Animation[_\s]*(\d+)\.(aep|zip)/i);
       if (!match) {
         this.logger.warn(`Skipping file with unexpected name: ${file}`);
         continue;
