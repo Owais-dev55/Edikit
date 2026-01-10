@@ -13,12 +13,12 @@ export const CurrentUser = createParamDecorator(
   (data: string | undefined, ctx: ExecutionContext): JwtUser | string => {
     const request = ctx.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
-    
+
     // If a property name is provided, return that property
     if (data && typeof data === 'string') {
-      return user[data as keyof JwtUser] as string;
+      return user[data as keyof JwtUser];
     }
-    
+
     // Otherwise return the entire user object
     return user;
   },
