@@ -6,6 +6,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { refreshUser } from "@/lib/auth";
+import { refreshCreditsInStore } from "@/lib/credits";
 import type { AppDispatch } from "@/redux/store";
 
 // Component that uses useSearchParams
@@ -38,9 +39,10 @@ function SuccessContent() {
   }, [sessionId, plan]);
   
   useEffect(() => {
-    // Refresh user profile so planType is up to date without a manual reload
+    // Refresh user profile and credits so planType is up to date without a manual reload
     if (sessionData?.success) {
       refreshUser(dispatch);
+      refreshCreditsInStore(dispatch);
     }
   }, [sessionData, dispatch]);
 

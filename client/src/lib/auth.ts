@@ -1,8 +1,10 @@
 import { baseUrl } from "@/utils/constant";
 import axios from "axios";
 import { clearUser, setUser } from "@/redux/slices/authSlice";
+import { setCredits, clearCredits } from "@/redux/slices/creditsSlice";
 import { AppDispatch } from "@/redux/store";
 import { getInitialsAvatar } from "@/utils/getInitialsAvatar";
+import { creditsApi } from "./credits";
 
 declare global {
   interface Window {
@@ -68,6 +70,15 @@ export const loginUser = async (
 
     const userWithAvatar = { ...data, avatar };
     dispatch(setUser(userWithAvatar));
+    
+    // Fetch and set credits data
+    try {
+      const creditsData = await creditsApi.getCreditsData();
+      dispatch(setCredits(creditsData));
+    } catch (error) {
+      console.error("Failed to fetch credits:", error);
+    }
+    
     return data;
   } catch (error) {
     throw error;
@@ -85,6 +96,14 @@ export const refreshUser = async (dispatch: AppDispatch) => {
       ? data.avatar
       : getInitialsAvatar(data.fullName);
     dispatch(setUser({ ...data, avatar }));
+    
+    // Fetch and set credits data
+    try {
+      const creditsData = await creditsApi.getCreditsData();
+      dispatch(setCredits(creditsData));
+    } catch (error) {
+      console.error("Failed to fetch credits:", error);
+    }
   } catch (error: unknown) {
     console.log("❌/auth/me failed", error);
 
@@ -95,12 +114,14 @@ export const refreshUser = async (dispatch: AppDispatch) => {
     if (status === 401) {
       console.log("🔒 401 Unauthorized - removing invalid token");
       dispatch(clearUser());
+      dispatch(clearCredits());
     } else {
       console.log(
         "⚠️ Auth check failed but keeping token (might be network issue)"
       );
       // Keep token for retry, but clear user state
       dispatch(clearUser());
+      dispatch(clearCredits());
     }
   }
 };
@@ -128,6 +149,14 @@ export const signupUser = async (
 
   const userWithAvatar = { ...data, avatar };
   dispatch(setUser(userWithAvatar));
+  
+  // Fetch and set credits data
+  try {
+    const creditsData = await creditsApi.getCreditsData();
+    dispatch(setCredits(creditsData));
+  } catch (error) {
+    console.error("Failed to fetch credits:", error);
+  }
 
   return data;
 };
@@ -157,6 +186,14 @@ export const appleLogin = async (dispatch: AppDispatch) => {
       ? data.avatar
       : getInitialsAvatar(data.fullName);
     dispatch(setUser({ ...data, avatar }));
+    
+    // Fetch and set credits data
+    try {
+      const creditsData = await creditsApi.getCreditsData();
+      dispatch(setCredits(creditsData));
+    } catch (error) {
+      console.error("Failed to fetch credits:", error);
+    }
   }
 
   console.log("Logged in user:", data);
@@ -168,9 +205,11 @@ export const logoutUser = async (dispatch: AppDispatch) => {
     await api.post("/auth/logout");
     localStorage.removeItem("user_token");
     dispatch(clearUser());
+    dispatch(clearCredits());
   } catch {
     localStorage.removeItem("user_token");
     dispatch(clearUser());
+    dispatch(clearCredits());
   }
 };
 
