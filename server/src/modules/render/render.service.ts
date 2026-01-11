@@ -655,14 +655,28 @@ export class RenderService {
   private async getLayerMapping(
     templateId: number,
   ): Promise<Record<string, string>> {
-    // Try to get from database first
+    // First check for hardcoded predefined mappings (highest priority)
+    const predefined = this.getPredefinedLayerMapping(templateId);
+    if (predefined) {
+      this.logger.log(
+        `Using predefined layer mapping for template ${templateId}:`,
+        JSON.stringify(predefined),
+      );
+      return predefined;
+    }
+
+    // Try to get from database
     const template = await this.prisma.nexrenderTemplate.findUnique({
       where: { templateId },
     });
 
-    // Check if layerMapping exists (will work after Prisma regenerate)
+    // Check if layerMapping exists in database
     const layerMapping = (template as any)?.layerMapping;
     if (layerMapping) {
+      this.logger.log(
+        `Using database layer mapping for template ${templateId}:`,
+        JSON.stringify(layerMapping),
+      );
       return layerMapping as Record<string, string>;
     }
 
@@ -676,17 +690,151 @@ export class RenderService {
     }
 
     // Fallback to empty mapping (will use defaults)
+    this.logger.warn(
+      `No layer mapping found for template ${templateId}, using defaults`,
+    );
     return {};
   }
 
   /**
+   * Get predefined layer mapping for a specific template
+   * These are manually configured based on actual AE layer names
+   */
+  private getPredefinedLayerMapping(
+    templateId: number,
+  ): Record<string, string> | null {
+    const predefinedMappings: Record<number, Record<string, string>> = {
+      // Animation 1 - Image & Text Template
+      // Frontend: text1, text2, image1, image2, background
+      // NOTE: Swapped due to client naming layers incorrectly
+      1: {
+        text1: 'txt_2', // swapped: frontend text1 -> AE txt_2
+        text2: 'txt_1', // swapped: frontend text2 -> AE txt_1
+        image1: 'img_2.png', // swapped: frontend image1 -> AE img_2.png
+        image2: 'img_1.png', // swapped: frontend image2 -> AE img_1.png
+        background: 'background.png',
+      },
+
+      // Animation 2 - Icon & Text Template
+      // Frontend: text1, icon1, icon2, background
+      2: {
+        text1: 'txt_1',
+        icon1: 'icon_1.png',
+        icon2: 'icon_2.png',
+        background: 'background.png',
+      },
+
+      // Animation 3 - Icon & Text Template
+      // Frontend: icon1, text1, text2, background
+      3: {
+        text1: 'txt_1',
+        text2: 'txt_2',
+        icon1: 'icon_1.png',
+        background: 'background.png',
+      },
+
+      // Animation 4 - Multiple Icons & Text
+      // Frontend: text1, icon1, icon2, icon3, background
+      4: {
+        text1: 'txt_1',
+        icon1: 'icon_1.png',
+        icon2: 'icon_2.png',
+        icon3: 'icon_3.png',
+        background: 'background.png',
+      },
+
+      // Animation 5 - Two Icons & Text
+      // Frontend: text1, icon1, icon2, background
+      // Note: Template has txt_2 but frontend only asks for text1
+      5: {
+        text1: 'txt_1',
+        icon1: 'icon_1.png',
+        icon2: 'icon_2.png',
+        background: 'background.png',
+      },
+
+      // Animation 6 - Video & Text Template
+      // Frontend: text1, video1, text2, background
+      6: {
+        text1: 'txt_1',
+        text2: 'txt_2',
+        video1: 'video_1.mp4',
+        background: 'background.png',
+      },
+
+      // Animation 7 - Simple Text Template
+      // Frontend: text1, text2, text3, background
+      7: {
+        text1: 'txt_1',
+        text2: 'txt_2',
+        text3: 'txt_3',
+        background: 'background.png',
+      },
+
+      // Animation 8 - Product Showcase
+      // Frontend: image (product), text1, text2, text3, background
+      8: {
+        text1: 'txt_1',
+        text2: 'txt_2',
+        text3: 'txt_3',
+        image: 'img_1.png',
+        productImage: 'img_1.png',
+        background: 'background.png',
+      },
+
+      // Animation 9 - Triple Text Template
+      // Frontend: text1, text2, text3, background
+      9: {
+        text1: 'txt_1',
+        text2: 'txt_2',
+        text3: 'txt_3',
+        background: 'background.png',
+      },
+
+      // Animation 10 - Four Icons & Text
+      // Frontend: icon1, icon2, icon3, icon4, text1, background
+      10: {
+        text1: 'txt_1',
+        icon1: 'icon_1.png',
+        icon2: 'icon_2.png',
+        icon3: 'icon_3.png',
+        icon4: 'icon_4.png',
+        background: 'background.png',
+      },
+
+      // Animation 11 - Social Media Style
+      // Frontend: icon1 (profile), text1 (username), video1, text2, background
+      11: {
+        text1: 'txt_1',
+        text2: 'txt_2',
+        icon1: 'icon_1.png',
+        video1: 'video_1.mp4',
+        background: 'background.png',
+      },
+    };
+
+    return predefinedMappings[templateId] || null;
+  }
+
+  /**
    * Auto-generate layer mapping from Nexrender layers
-   * Attempts to match frontend field names to layer names
+   * First checks for predefined mappings, then falls back to pattern matching
    */
   private autoGenerateLayerMapping(
     layers: Array<{ layerName: string; composition: string }>,
     templateId: number,
   ): Record<string, string> {
+    // Check for predefined mapping first
+    const predefined = this.getPredefinedLayerMapping(templateId);
+    if (predefined) {
+      this.logger.log(
+        `Using predefined layer mapping for template ${templateId}:`,
+        predefined,
+      );
+      return predefined;
+    }
+
+    // Fall back to auto-generation for unknown templates
     const mapping: Record<string, string> = {};
 
     this.logger.log(
@@ -694,85 +842,114 @@ export class RenderService {
     );
     this.logger.log(
       'Available layers:',
-      layers.map((l) => l.layerName),
+      layers.map((l) => `${l.layerName} (${l.composition})`),
     );
 
-    // Common patterns to match - expanded to catch more variations
-    const patterns = {
+    // Priority-ordered patterns - more specific patterns first
+    // Patterns are designed to match common After Effects layer naming conventions
+    const patterns: Record<string, RegExp[]> = {
+      // Text layers - match numbered text layers (txt_1, text_1, Text 1, etc.)
       text1: [
-        /text\s*1/i,
-        /^text\s*1$/i, // Exact match
-        /txt\s*1/i, // txt_1 format
-        /^txt\s*1$/i,
-        /txt_1/i, // txt_1 format
-        /headline/i,
-        /title/i,
-        /main\s*text/i,
-        /primary\s*text/i,
-        /heading/i,
-        /prova\s*scena\s*6/i,
+        /^txt[_\s-]?1$/i, // txt_1, txt-1, txt 1
+        /^text[_\s-]?1$/i, // text_1, text-1, text 1
+        /^headline$/i,
+        /^title$/i,
+        /^main[_\s-]?text$/i,
+        /prova\s*scena\s*6/i, // Legacy pattern
       ],
       text2: [
-        /text\s*2/i,
-        /^text\s*2$/i, // Exact match
-        /txt\s*2/i, // txt_2 format
-        /^txt\s*2$/i,
-        /txt_2/i, // txt_2 format
-        /subheadline/i,
-        /subtitle/i,
-        /secondary\s*text/i,
-        /description/i,
+        /^txt[_\s-]?2$/i,
+        /^text[_\s-]?2$/i,
+        /^subtitle$/i,
+        /^subheadline$/i,
         /prova\s*scena\s*5/i,
       ],
-      text3: [
-        /text\s*3/i,
-        /^text\s*3$/i, // Exact match
-        /description/i,
-        /body/i,
-        /tertiary\s*text/i,
-      ],
+      text3: [/^txt[_\s-]?3$/i, /^text[_\s-]?3$/i, /^description$/i, /^body$/i],
+      text4: [/^txt[_\s-]?4$/i, /^text[_\s-]?4$/i],
+
+      // Image layers - match img_1.png, image_1.png, product.png, etc.
+      // Note: Exclude icon and box patterns from image matching
       image1: [
-        /image\s*1/i,
-        /^image\s*1$/i,
-        /img\s*1/i, // img_1 format
-        /img_1/i,
-        /logo/i,
-        /main\s*image/i,
+        /^img[_\s-]?1\.png$/i, // img_1.png
+        /^image[_\s-]?1\.png$/i,
+        /^img[_\s-]?1$/i, // img_1 (without extension)
+        /^image[_\s-]?1$/i,
+        /^logo\.png$/i,
+        /^product[_\s-]?1?\.png$/i,
         /images\s*and\s*videos/i,
-        /primary\s*image/i,
       ],
       image2: [
-        /image\s*2/i,
-        /^image\s*2$/i,
-        /img\s*2/i, // img_2 format
-        /img_2/i,
-        /img\.png/i,
-        /secondary/i,
+        /^img[_\s-]?2\.png$/i,
+        /^image[_\s-]?2\.png$/i,
+        /^img[_\s-]?2$/i,
+        /^image[_\s-]?2$/i,
+        /^product[_\s-]?2\.png$/i,
       ],
       image3: [
-        /image\s*3/i,
-        /^image\s*3$/i,
-        /box\s*5/i,
-        /box\s*1/i, // box_1 format
-        /box_1/i,
-        /box_2/i,
-        /icon/i,
+        /^img[_\s-]?3\.png$/i,
+        /^image[_\s-]?3\.png$/i,
+        /^img[_\s-]?3$/i,
+        /^image[_\s-]?3$/i,
       ],
-      icon1: [/icon\s*1/i, /^icon\s*1$/i, /social\s*icon/i],
-      icon2: [/icon\s*2/i, /^icon\s*2$/i],
-      icon3: [/icon\s*3/i, /^icon\s*3$/i],
-      icon4: [/icon\s*4/i, /^icon\s*4$/i],
-      background: [/bg\.png/i, /background/i, /backdrop/i, /^background$/i],
+      image4: [
+        /^img[_\s-]?4\.png$/i,
+        /^image[_\s-]?4\.png$/i,
+        /^img[_\s-]?4$/i,
+        /^image[_\s-]?4$/i,
+      ],
+
+      // Icon layers - explicitly match icon patterns
+      icon1: [
+        /^icon[_\s-]?1\.png$/i, // icon_1.png
+        /^icon[_\s-]?1$/i, // icon_1
+        /^social[_\s-]?icon[_\s-]?1/i,
+      ],
+      icon2: [
+        /^icon[_\s-]?2\.png$/i,
+        /^icon[_\s-]?2$/i,
+        /^social[_\s-]?icon[_\s-]?2/i,
+      ],
+      icon3: [/^icon[_\s-]?3\.png$/i, /^icon[_\s-]?3$/i],
+      icon4: [/^icon[_\s-]?4\.png$/i, /^icon[_\s-]?4$/i],
+
+      // Video layers
+      video1: [
+        /^video[_\s-]?1\.(mp4|mov|avi)$/i, // video_1.mp4
+        /^video[_\s-]?1$/i, // video_1
+        /^vid[_\s-]?1/i,
+        /^main[_\s-]?video/i,
+      ],
+      video2: [
+        /^video[_\s-]?2\.(mp4|mov|avi)$/i,
+        /^video[_\s-]?2$/i,
+        /^vid[_\s-]?2/i,
+      ],
+
+      // Background layer
+      background: [
+        /^background\.png$/i, // background.png
+        /^background$/i, // background
+        /^bg\.png$/i, // bg.png
+        /^bg$/i, // bg
+        /^backdrop/i,
+      ],
+
+      // Product image (special case for e-commerce templates)
+      productImage: [/^product[_\s-]?image/i, /^product\.png$/i, /^product$/i],
+
+      // Generic image field (used by template 8 with "image" field)
+      image: [/^image\.png$/i, /^main[_\s-]?image$/i],
     };
 
-    // Match layers to patterns
+    // Match layers to patterns with priority ordering
     for (const [fieldName, regexPatterns] of Object.entries(patterns)) {
-      for (const layer of layers) {
-        for (const pattern of regexPatterns) {
+      if (mapping[fieldName]) continue; // Skip if already mapped
+      for (const pattern of regexPatterns) {
+        for (const layer of layers) {
           if (pattern.test(layer.layerName)) {
             mapping[fieldName] = layer.layerName;
             this.logger.log(
-              `Matched ${fieldName} → "${layer.layerName}" (composition: ${layer.composition})`,
+              `✓ Matched ${fieldName} → "${layer.layerName}" (composition: ${layer.composition})`,
             );
             break;
           }
@@ -781,31 +958,70 @@ export class RenderService {
       }
     }
 
-    // If no text layers found, try to find any text-like layers
-    if (!mapping.text1 && !mapping.text2) {
-      const textLayers = layers.filter(
-        (l) =>
-          !l.layerName.match(/\.(png|jpg|jpeg|mp4|mov|mp3|wav)$/i) &&
-          !l.layerName.toLowerCase().includes('background') &&
-          !l.layerName.toLowerCase().includes('image') &&
-          !l.layerName.toLowerCase().includes('icon'),
-      );
+    // Fallback: Find unmapped text layers (layers without file extensions that look like text)
+    const mappedTextLayers = [
+      mapping.text1,
+      mapping.text2,
+      mapping.text3,
+      mapping.text4,
+    ].filter(Boolean);
+    const textSlots = ['text1', 'text2', 'text3', 'text4'];
 
-      if (textLayers.length > 0) {
+    const potentialTextLayers = layers.filter(
+      (l) =>
+        // No file extension
+        !l.layerName.match(/\.(png|jpg|jpeg|mp4|mov|mp3|wav|gif|webp)$/i) &&
+        // Not already mapped
+        !mappedTextLayers.includes(l.layerName) &&
+        // Not a known non-text layer type
+        !l.layerName
+          .toLowerCase()
+          .match(
+            /^(background|bg|backdrop|adjustment|camera|shape|null|comp|precomp|sfx|audio|music|mod_item|box)/i,
+          ) &&
+        // Looks like a text layer (contains txt, text, or is a simple name)
+        (l.layerName.toLowerCase().includes('txt') ||
+          l.layerName.toLowerCase().includes('text') ||
+          /^[a-z_\s-]+$/i.test(l.layerName)),
+    );
+
+    // Sort potential text layers by their number suffix if present
+    potentialTextLayers.sort((a, b) => {
+      const numA = a.layerName.match(/(\d+)/)?.[1];
+      const numB = b.layerName.match(/(\d+)/)?.[1];
+      if (numA && numB) return parseInt(numA) - parseInt(numB);
+      return 0;
+    });
+
+    // Assign unmapped text layers to empty text slots
+    for (const layer of potentialTextLayers) {
+      const emptySlot = textSlots.find((slot) => !mapping[slot]);
+      if (emptySlot) {
+        mapping[emptySlot] = layer.layerName;
         this.logger.log(
-          `Found potential text layers (not matched by patterns):`,
-          textLayers.map((l) => l.layerName),
+          `✓ Auto-assigned ${emptySlot} → "${layer.layerName}" (fallback)`,
         );
-        // Use first two as text1 and text2
-        if (textLayers[0]) {
-          mapping.text1 = textLayers[0].layerName;
-          this.logger.log(`Auto-assigned text1 → "${textLayers[0].layerName}"`);
-        }
-        if (textLayers[1]) {
-          mapping.text2 = textLayers[1].layerName;
-          this.logger.log(`Auto-assigned text2 → "${textLayers[1].layerName}"`);
-        }
       }
+    }
+
+    // Log any unmapped layers that might need manual mapping
+    const allMappedLayers = Object.values(mapping);
+    const unmappedLayers = layers.filter(
+      (l) =>
+        !allMappedLayers.includes(l.layerName) &&
+        // Skip known system layers
+        !l.layerName
+          .toLowerCase()
+          .match(
+            /^(adjustment|camera|camera_ctrl|shape|null|sfx|audio|music|mod_item|box)/i,
+          ),
+    );
+
+    if (unmappedLayers.length > 0) {
+      this.logger.warn(
+        `⚠ Unmapped layers for template ${templateId}:`,
+        unmappedLayers.map((l) => `${l.layerName} (${l.composition})`),
+      );
     }
 
     this.logger.log(
@@ -842,6 +1058,17 @@ export class RenderService {
 
     // Get layer mapping for this template (from database)
     const layerMapping = await this.getLayerMapping(templateId);
+
+    this.logger.log(
+      `Building assets for template ${templateId}`,
+      `Layer mapping: ${JSON.stringify(layerMapping)}`,
+    );
+    this.logger.log(
+      `DTO fields received:`,
+      `text1=${dto.text1}, text2=${dto.text2}, text3=${dto.text3}, ` +
+        `image1=${dto.image1}, image2=${dto.image2}, background=${dto.background}, ` +
+        `icon1=${dto.icon1}, icon2=${dto.icon2}, video1=${dto.video1}`,
+    );
 
     // Map frontend-friendly field names to backend field names
     const text1 = dto.text1 || dto.headline;
@@ -946,6 +1173,35 @@ export class RenderService {
       });
     }
 
+    // Video replacements - use mapped layer names
+    if (dto.video1) {
+      const layerName = layerMapping.video1 || 'Video 1';
+      assets.push({
+        type: 'video',
+        src: dto.video1,
+        layerName,
+      });
+    }
+    if (dto.video2) {
+      const layerName = layerMapping.video2 || 'Video 2';
+      assets.push({
+        type: 'video',
+        src: dto.video2,
+        layerName,
+      });
+    }
+
+    // Product image (single generic image field for e-commerce templates)
+    if (dto.image) {
+      const layerName =
+        layerMapping.productImage || layerMapping.image || 'Product Image';
+      assets.push({
+        type: 'image',
+        src: dto.image,
+        layerName,
+      });
+    }
+
     // Background - use mapped layer name
     if (dto.background) {
       const layerName = layerMapping.background || 'Background';
@@ -1042,6 +1298,12 @@ export class RenderService {
     dto: CreateRenderJobDto,
     webhookUrl: string,
   ) {
+    // Log incoming DTO for debugging
+    this.logger.log(
+      `Creating render job for template ${templateId}`,
+      `DTO received: ${JSON.stringify(dto, null, 2)}`,
+    );
+
     // Ensure template is uploaded
     const hasCredits = await this.creditsService.hasEnoughCredits(userId, 1);
 
@@ -1474,6 +1736,103 @@ export class RenderService {
       templateId,
       layerMapping,
     };
+  }
+
+  /**
+   * Regenerate layer mapping for a template using auto-detection
+   */
+  async regenerateLayerMapping(templateId: number): Promise<{
+    templateId: number;
+    layerMapping: Record<string, string>;
+    layers: Array<{ layerName: string; composition: string }>;
+  }> {
+    const template = await this.prisma.nexrenderTemplate.findUnique({
+      where: { templateId },
+    });
+
+    if (!template) {
+      throw new NotFoundException(`Template ${templateId} not found`);
+    }
+
+    const layers =
+      (template.layers as Array<{
+        layerName: string;
+        composition: string;
+      }>) || [];
+
+    if (layers.length === 0) {
+      throw new BadRequestException(
+        `Template ${templateId} has no layers to generate mapping from`,
+      );
+    }
+
+    // Regenerate mapping using the updated auto-detection logic
+    const newMapping = this.autoGenerateLayerMapping(layers, templateId);
+
+    // Update in database
+    await this.prisma.nexrenderTemplate.update({
+      where: { templateId },
+      data: {
+        layerMapping: newMapping as any,
+      },
+    });
+
+    this.logger.log(
+      `✓ Layer mapping regenerated for template ${templateId}:`,
+      newMapping,
+    );
+
+    return {
+      templateId,
+      layerMapping: newMapping,
+      layers,
+    };
+  }
+
+  /**
+   * Regenerate layer mappings for all templates
+   */
+  async regenerateAllLayerMappings(): Promise<
+    Array<{
+      templateId: number;
+      success: boolean;
+      layerMapping?: Record<string, string>;
+      error?: string;
+    }>
+  > {
+    const templates = await this.prisma.nexrenderTemplate.findMany({
+      orderBy: { templateId: 'asc' },
+    });
+
+    const results: Array<{
+      templateId: number;
+      success: boolean;
+      layerMapping?: Record<string, string>;
+      error?: string;
+    }> = [];
+
+    for (const template of templates) {
+      try {
+        const result = await this.regenerateLayerMapping(template.templateId);
+        results.push({
+          templateId: template.templateId,
+          success: true,
+          layerMapping: result.layerMapping,
+        });
+      } catch (error) {
+        results.push({
+          templateId: template.templateId,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    this.logger.log(
+      `Layer mapping regeneration completed for ${results.length} templates`,
+    );
+
+    return results;
   }
 
   /**

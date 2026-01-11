@@ -41,7 +41,7 @@ export class RenderController {
 
   @Post('upload-asset')
   @UseInterceptors(FilesInterceptor('files', 10))
-  @ApiOperation({ summary: 'Upload user images to Cloudinary' })
+  @ApiOperation({ summary: 'Upload user images/videos to Cloudinary' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -58,7 +58,7 @@ export class RenderController {
     },
   })
   @ApiCookieAuth()
-  @ApiResponse({ status: 200, description: 'Images uploaded successfully' })
+  @ApiResponse({ status: 200, description: 'Files uploaded successfully' })
   async uploadAsset(
     @CurrentUser('userId') userId: string,
     @UploadedFiles() files: Express.Multer.File[],
@@ -68,14 +68,76 @@ export class RenderController {
     }
 
     const uploadResults = await Promise.all(
-      files.map((file) =>
-        this.renderService.uploadAsset(file, userId, 'image'),
-      ),
+      files.map((file) => {
+        // Detect asset type based on mimetype
+        const assetType = this.getAssetType(file.mimetype);
+        return this.renderService.uploadAsset(file, userId, assetType);
+      }),
     );
 
+    // uploadResults are already secure_url strings from the service
     return {
       urls: uploadResults,
     };
+  }
+
+  @Post('upload-video')
+  @UseInterceptors(FilesInterceptor('files', 5))
+  @ApiOperation({ summary: 'Upload user videos to Cloudinary' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+        },
+      },
+    },
+  })
+  @ApiCookieAuth()
+  @ApiResponse({ status: 200, description: 'Videos uploaded successfully' })
+  async uploadVideo(
+    @CurrentUser('userId') userId: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
+    }
+
+    // Validate that all files are videos
+    for (const file of files) {
+      if (!file.mimetype.startsWith('video/')) {
+        throw new BadRequestException(
+          `Invalid file type: ${file.originalname}. Only video files are allowed.`,
+        );
+      }
+    }
+
+    const uploadResults = await Promise.all(
+      files.map((file) =>
+        this.renderService.uploadAsset(file, userId, 'video'),
+      ),
+    );
+
+    // uploadResults are already secure_url strings from the service
+    return {
+      urls: uploadResults,
+    };
+  }
+
+  /**
+   * Detect asset type based on mimetype
+   */
+  private getAssetType(mimetype: string): 'image' | 'video' {
+    if (mimetype.startsWith('video/')) {
+      return 'video';
+    }
+    return 'image';
   }
 
   @Get('templates')
@@ -283,6 +345,42 @@ export class RenderController {
     return {
       message: 'Layer mapping updated successfully',
       ...result,
+    };
+  }
+
+  @Post('templates/:templateId/regenerate-mapping')
+  @ApiOperation({
+    summary: 'Regenerate layer mapping for a template using auto-detection',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Layer mapping regenerated successfully',
+  })
+  async regenerateLayerMapping(
+    @Param('templateId', ParseIntPipe) templateId: number,
+  ) {
+    const result = await this.renderService.regenerateLayerMapping(templateId);
+    return {
+      message: 'Layer mapping regenerated successfully',
+      ...result,
+    };
+  }
+
+  @Post('templates/regenerate-all-mappings')
+  @ApiOperation({
+    summary: 'Regenerate layer mappings for all templates',
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'All layer mappings regenerated successfully',
+  })
+  async regenerateAllLayerMappings() {
+    const results = await this.renderService.regenerateAllLayerMappings();
+    return {
+      message: 'Layer mapping regeneration completed',
+      results,
     };
   }
 
