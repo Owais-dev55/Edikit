@@ -748,6 +748,7 @@ export class RenderService {
       // Note: Template has txt_2 but frontend only asks for text1
       5: {
         text1: 'txt_1',
+        text2: 'txt_2',
         icon1: 'icon_1.png',
         icon2: 'icon_2.png',
         background: 'background.png',
@@ -808,8 +809,8 @@ export class RenderService {
       // Animation 11 - Social Media Style
       // Frontend: icon1 (profile), text1 (username), video1, text2, background
       11: {
-        text1: 'txt_1',
-        text2: 'txt_2',
+        text1: 'txt_2',
+        text2: 'txt_1',
         icon1: 'icon_1.png',
         video1: 'video_1.mp4',
         background: 'background.png',
