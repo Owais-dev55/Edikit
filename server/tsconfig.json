@@ -24,6 +24,5 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  },
-  "exclude": ["src/scripts/**/*"]
+  }
 }
