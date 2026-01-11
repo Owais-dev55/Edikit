@@ -107,7 +107,8 @@ export class CloudinaryService {
     assetType: 'image' | 'video' = 'image',
   ): Promise<UploadResult> {
     const folder = `edikit/uploads/${userId}`;
-    const resourceType = assetType === 'video' ? 'video' : 'image';
+    // Use 'auto' resource type to let Cloudinary auto-detect, but hint with assetType
+    const resourceType = assetType === 'video' ? 'video' : 'auto';
 
     return this.uploadFile(file.buffer, {
       folder,
