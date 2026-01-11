@@ -107,6 +107,11 @@ const Navbar = () => {
           <div className="flex items-center gap-2 md:gap-3">
             <ToogleTheme />
 
+            {/* Credits Display - Visible on all devices */}
+            {!isLoading && !minLoadingTime && user && (
+              <CreditsDisplay />
+            )}
+
             {/* Desktop buttons */}
             <div className="hidden sm:flex items-center gap-2 pr-2">
               {isLoading || minLoadingTime ? (
@@ -116,9 +121,6 @@ const Navbar = () => {
                 </div>
               ) : user ? (
                 <>
-                  {/* Credits Display */}
-                  <CreditsDisplay />
-                  
                   <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -261,6 +263,9 @@ const Navbar = () => {
             </NavLink>
             <NavLink href="/pricing" onClick={() => setIsOpen(false)}>
               Pricing
+            </NavLink>
+            <NavLink href="/credits" onClick={() => setIsOpen(false)}>
+              Credits
             </NavLink>
 
             <div className="flex flex-col gap-2 pt-2">

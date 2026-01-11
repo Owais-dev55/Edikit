@@ -39,12 +39,14 @@ const CustomizePage = () => {
   const router = useRouter();
   const templateId = parseInt(params.id as string);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hasNotifiedRef = useRef(false);
 
   const template = templates.find((t) => t.id === templateId);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
   const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>(
@@ -111,20 +113,34 @@ const CustomizePage = () => {
       return;
     }
 
+    // Reset notification flag when starting a new job
+    hasNotifiedRef.current = false;
+
     const pollInterval = setInterval(async () => {
       try {
         const { data } = await api.get(`/render/job/${renderJob.id}`, {
           withCredentials: true,
         });
 
-        setRenderJob(data);
-
+        // Check status BEFORE updating state to prevent re-triggering
         if (data.status === "COMPLETED") {
-          showInfoToast("Video rendered successfully!");
           clearInterval(pollInterval);
+          // Only show toast once, even if multiple requests complete simultaneously
+          if (!hasNotifiedRef.current) {
+            hasNotifiedRef.current = true;
+            showSuccessToast("Video rendered successfully!");
+          }
+          setRenderJob(data);
         } else if (data.status === "FAILED") {
-          showErrorToast(data.error || "Rendering failed");
           clearInterval(pollInterval);
+          if (!hasNotifiedRef.current) {
+            hasNotifiedRef.current = true;
+            showErrorToast(data.error || "Rendering failed");
+          }
+          setRenderJob(data);
+        } else {
+          // Only update state if still processing
+          setRenderJob(data);
         }
       } catch (error) {
         console.error("Failed to poll job status:", error);
@@ -237,7 +253,7 @@ const CustomizePage = () => {
         [fieldKey]: data.urls[0],
       }));
 
-      showInfoToast(`${fieldKey} uploaded successfully`);
+      showSuccessToast(`${fieldKey} uploaded successfully`);
     } catch (error) {
       console.error("Upload failed:", error);
       showErrorToast(`Failed to upload ${fieldKey}`);
@@ -751,6 +767,7 @@ const CustomizePage = () => {
                 onClick={handleGeneratePreview}
                 disabled={
                   isGenerating ||
+                  isUploading ||
                   authLoading ||
                   !hasRequiredFields() ||
                   uploadingAssets.size > 0 ||
@@ -769,6 +786,11 @@ const CustomizePage = () => {
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Submitting Job...
+                  </>
+                ) : isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading Asset...
                   </>
                 ) : isLoggedIn ? (
                   <>
