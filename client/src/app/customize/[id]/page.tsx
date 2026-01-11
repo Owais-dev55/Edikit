@@ -49,7 +49,9 @@ const CustomizePage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
-  const [imageDimensions, setImageDimensions] = useState<{ [key: string]: { width: number; height: number } }>({});
+  const [imageDimensions, setImageDimensions] = useState<{
+    [key: string]: { width: number; height: number };
+  }>({});
   const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>(
     {}
   );
@@ -217,7 +219,10 @@ const CustomizePage = () => {
     file: File,
     requiredWidth: number,
     requiredHeight: number
-  ): Promise<{ file: File; verifiedDimensions: { width: number; height: number } | null }> => {
+  ): Promise<{
+    file: File;
+    verifiedDimensions: { width: number; height: number } | null;
+  }> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -270,11 +275,9 @@ const CustomizePage = () => {
 
           canvas.toBlob(
             (blob) => {
-              const resizedFile = new File(
-                [blob!],
-                file.name,
-                { type: "image/jpeg" }
-              );
+              const resizedFile = new File([blob!], file.name, {
+                type: "image/jpeg",
+              });
 
               // Verify dimensions by loading the resized image
               const verifyImg = new window.Image();
@@ -358,9 +361,7 @@ const CustomizePage = () => {
                 verifiedDimensions.height === height;
 
               if (isCorrect) {
-                showSuccessToast(
-                  `✓ Image resized to ${field.dimensions}`
-                );
+                showSuccessToast(`✓ Image resized to ${field.dimensions}`);
               } else {
                 showErrorToast(
                   `⚠ Resize issue: expected ${field.dimensions}, got ${verifiedDimensions.width}x${verifiedDimensions.height}`
@@ -698,7 +699,24 @@ const CustomizePage = () => {
                             </label>
                             {imageDimensions[fieldKey] && (
                               <div className="text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-1 rounded">
-                                ✓ {(imageDimensions[fieldKey] as { width: number; height: number }).width}x{(imageDimensions[fieldKey] as { width: number; height: number }).height}
+                                ✓{" "}
+                                {
+                                  (
+                                    imageDimensions[fieldKey] as {
+                                      width: number;
+                                      height: number;
+                                    }
+                                  ).width
+                                }
+                                x
+                                {
+                                  (
+                                    imageDimensions[fieldKey] as {
+                                      width: number;
+                                      height: number;
+                                    }
+                                  ).height
+                                }
                               </div>
                             )}
                           </div>

@@ -48,6 +48,10 @@ export class CreateRenderJobDto {
   @IsString()
   text3?: string;
 
+  @IsOptional()
+  @IsString()
+  text4?: string;
+
   // Frontend-friendly field names (will map to text1, text2, text3)
   @IsOptional()
   @IsString()
@@ -78,6 +82,10 @@ export class CreateRenderJobDto {
   @IsString()
   image4?: string;
 
+  @IsOptional()
+  @IsString()
+  image5?: string;
+
   // Logo field (maps to image1)
   @IsOptional()
   @IsString()
@@ -99,6 +107,10 @@ export class CreateRenderJobDto {
   @IsOptional()
   @IsString()
   icon4?: string;
+
+  @IsOptional()
+  @IsString()
+  icon5?: string;
 
   // Video fields
   @IsOptional()
