@@ -748,6 +748,7 @@ export class RenderService {
       // Note: Template has txt_2 but frontend only asks for text1
       5: {
         text1: 'txt_1',
+        text2: 'txt_2',
         icon1: 'icon_1.png',
         icon2: 'icon_2.png',
         background: 'background.png',
