@@ -88,7 +88,7 @@ export const templates: Template[] = [
       image2: { type: "image", label: "Image 2", dimensions: "1080x1080", required: false },
       background: { type: "image", label: "Background", dimensions: "1080x1080", required: false },
     }
-  },
+  },  
   {
     id: 2,
     name: "Animation 2",
@@ -159,7 +159,7 @@ export const templates: Template[] = [
       text2: { type: "text", label: "Text 2", maxLength: 15, required: true },
       text3: { type: "text", label: "Text 3", maxLength: 15, required: true },
       text4: { type: "text", label: "Text 4", maxLength: 15, required: true },
-      video1: { type: "video", label: "Video 1", dimensions: "1080x1080", required: false },
+      video1: { type: "video", label: "Video 1", dimensions: "1080x1920", required: false },
       background: { type: "image", label: "Background", dimensions: "1080x1080", required: false },
     }
   },
@@ -218,6 +218,7 @@ export const templates: Template[] = [
       icon2: { type: "image", label: "Icon 2", dimensions: "800x800-1920x1920", required: false },
       icon3: { type: "image", label: "Icon 3", dimensions: "800x800-1920x1920", required: false },
       icon4: { type: "image", label: "Icon 4", dimensions: "800x800-1920x1920", required: false },
+      icon5: { type: "image", label: "Icon 5", dimensions: "800x800-1920x1920", required: false },
       text1: { type: "text", label: "Text 1", maxLength: 16, required: true },
       background: { type: "image", label: "Background", dimensions: "1080x1080", required: false },
     }
