@@ -49,8 +49,16 @@ const CustomizePage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
-  const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
-  const [uploadedAssets, setUploadedAssets] = useState<{ [key: string]: string }>({});
+  const [imageDimensions, setImageDimensions] = useState<{ [key: string]: { width: number; height: number } }>({});
+  const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>(
+    {}
+  );
+  const [uploadedAssets, setUploadedAssets] = useState<{
+    [key: string]: string;
+  }>({});
+  const [uploadingAssets, setUploadingAssets] = useState<Set<string>>(
+    new Set()
+  );
 
   // Video & image preview state
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -381,7 +389,7 @@ const CustomizePage = () => {
       if (verifiedDimensions) {
         setImageDimensions((prev) => ({
           ...prev,
-          [fieldKey]: verifiedDimensions,
+          [fieldKey]: verifiedDimensions as { width: number; height: number },
         }));
       }
     } else if (file.type.startsWith("video/")) {
