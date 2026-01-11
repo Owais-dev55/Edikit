@@ -754,10 +754,12 @@ export class RenderService {
       },
 
       // Animation 6 - Video & Text Template
-      // Frontend: text1, video1, text2, background
+      // Frontend: text1, text2, text3, text4, video1, background
       6: {
         text1: 'txt_1',
         text2: 'txt_2',
+        text3: 'txt_3',
+        text4: 'txt_4',
         video1: 'video_1.mp4',
         background: 'background.png',
       },
@@ -778,7 +780,7 @@ export class RenderService {
         text2: 'txt_2',
         text3: 'txt_3',
         image: 'img_1.png',
-        productImage: 'img_1.png',
+        // productImage: 'img_1.png',
         background: 'background.png',
       },
 
@@ -799,6 +801,7 @@ export class RenderService {
         icon2: 'icon_2.png',
         icon3: 'icon_3.png',
         icon4: 'icon_4.png',
+        icon5: 'icon_5.png',
         background: 'background.png',
       },
 
@@ -896,6 +899,12 @@ export class RenderService {
         /^image[_\s-]?4\.png$/i,
         /^img[_\s-]?4$/i,
         /^image[_\s-]?4$/i,
+      ],
+      image5: [
+        /^img[_\s-]?5\.png$/i,
+        /^image[_\s-]?5\.png$/i,
+        /^img[_\s-]?5$/i,
+        /^image[_\s-]?5$/i,
       ],
 
       // Icon layers - explicitly match icon patterns
@@ -1065,9 +1074,9 @@ export class RenderService {
     );
     this.logger.log(
       `DTO fields received:`,
-      `text1=${dto.text1}, text2=${dto.text2}, text3=${dto.text3}, ` +
-        `image1=${dto.image1}, image2=${dto.image2}, background=${dto.background}, ` +
-        `icon1=${dto.icon1}, icon2=${dto.icon2}, video1=${dto.video1}`,
+      `text1=${dto.text1}, text2=${dto.text2}, text3=${dto.text3}, text4=${dto.text4}, ` +
+        `image1=${dto.image1}, image2=${dto.image2}, image3=${dto.image3}, image4=${dto.image4}, image5=${dto.image5}, background=${dto.background}, ` +
+        `icon1=${dto.icon1}, icon2=${dto.icon2}, icon3=${dto.icon3}, icon4=${dto.icon4}, icon5=${dto.icon5}, video1=${dto.video1}`,
     );
 
     // Map frontend-friendly field names to backend field names
@@ -1104,6 +1113,15 @@ export class RenderService {
         value: text3,
       });
     }
+    if (dto.text4) {
+      const layerName = layerMapping.text4 || 'Text 4';
+      assets.push({
+        type: 'data',
+        layerName,
+        property: 'Source Text',
+        value: dto.text4,
+      });
+    }
 
     // Image replacements - use mapped layer names
     if (image1) {
@@ -1138,6 +1156,14 @@ export class RenderService {
         layerName,
       });
     }
+    if (dto.image5) {
+      const layerName = layerMapping.image5 || 'Image 5';
+      assets.push({
+        type: 'image',
+        src: dto.image5,
+        layerName,
+      });
+    }
 
     // Icon replacements - use mapped layer names
     if (dto.icon1) {
@@ -1169,6 +1195,14 @@ export class RenderService {
       assets.push({
         type: 'image',
         src: dto.icon4,
+        layerName,
+      });
+    }
+    if (dto.icon5) {
+      const layerName = layerMapping.icon5 || 'Icon 5';
+      assets.push({
+        type: 'image',
+        src: dto.icon5,
         layerName,
       });
     }
