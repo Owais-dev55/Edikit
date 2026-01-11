@@ -990,7 +990,7 @@ const CustomizePage = () => {
                   Preview
                 </h2>
 
-                <div className="aspect-video bg-muted rounded-lg overflow-hidden relative border border-border">
+                <div className="aspect-square bg-muted rounded-lg overflow-hidden relative border border-border">
                   {showRenderedVideo ? (
                     // Show rendered video with controls
                     <video
