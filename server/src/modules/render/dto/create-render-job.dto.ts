@@ -100,6 +100,20 @@ export class CreateRenderJobDto {
   @IsString()
   icon4?: string;
 
+  // Video fields
+  @IsOptional()
+  @IsString()
+  video1?: string;
+
+  @IsOptional()
+  @IsString()
+  video2?: string;
+
+  // Product image (for e-commerce templates, mapped to productImage or image)
+  @IsOptional()
+  @IsString()
+  image?: string;
+
   // Background
   @IsOptional()
   @IsString()

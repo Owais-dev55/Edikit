@@ -1,5 +1,5 @@
 "use client";
-import  { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -15,7 +15,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { templates } from "@/utils/constant";
 import api from "@/lib/auth";
-import { showInfoToast, showErrorToast, showSuccessToast } from "@/components/Toast/showToast";
+import {
+  showInfoToast,
+  showErrorToast,
+  showSuccessToast,
+} from "@/components/Toast/showToast";
 import Image from "next/image";
 
 interface FormDataState {
@@ -45,8 +49,15 @@ const CustomizePage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
-  const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>({});
-  const [uploadedAssets, setUploadedAssets] = useState<{ [key: string]: string }>({});
+  const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>(
+    {}
+  );
+  const [uploadedAssets, setUploadedAssets] = useState<{
+    [key: string]: string;
+  }>({});
+  const [uploadingAssets, setUploadingAssets] = useState<Set<string>>(
+    new Set()
+  );
 
   // Video & image preview state
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -144,7 +155,7 @@ const CustomizePage = () => {
     return () => {
       if (videoRef.current) {
         videoRef.current.pause();
-        videoRef.current.src = '';
+        videoRef.current.src = "";
       }
     };
   }, []);
@@ -175,7 +186,7 @@ const CustomizePage = () => {
   const handleVideoLoaded = () => {
     setIsVideoLoaded(true);
     setIsVideoLoading(false);
-    
+
     if (isVideoPlaying && videoRef.current) {
       videoRef.current.play().catch(() => {
         console.error("Autoplay failed");
@@ -225,7 +236,8 @@ const CustomizePage = () => {
   const uploadSingleAsset = async (fieldKey: string, file: File) => {
     if (!isLoggedIn) return;
 
-    setIsUploading(true);
+    // Mark this field as uploading
+    setUploadingAssets((prev) => new Set(prev).add(fieldKey));
 
     try {
       const formDataToSend = new FormData();
@@ -246,7 +258,12 @@ const CustomizePage = () => {
       console.error("Upload failed:", error);
       showErrorToast(`Failed to upload ${fieldKey}`);
     } finally {
-      setIsUploading(false);
+      // Remove from uploading set
+      setUploadingAssets((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(fieldKey);
+        return newSet;
+      });
     }
   };
 
@@ -266,8 +283,17 @@ const CustomizePage = () => {
 
   const hasRequiredFields = () => {
     if (!template) return false;
+
+    // Check if any uploads are still in progress
+    if (uploadingAssets.size > 0) return false;
+
     return Object.entries(template.fields).every(([key, field]) => {
       if (field.required) {
+        // For image/video fields, check if the upload is complete (URL exists)
+        if (field.type === "image" || field.type === "video") {
+          return !!uploadedAssets[key];
+        }
+        // For text fields, check formData
         const value = formData[key];
         return value !== "" && value !== null;
       }
@@ -287,6 +313,10 @@ const CustomizePage = () => {
     try {
       const renderDto: any = {};
 
+      // Debug: Log all uploaded assets
+      console.log("📤 All uploaded assets:", uploadedAssets);
+      console.log("📋 Template fields:", template!.fields);
+
       Object.entries(template!.fields).forEach(([key, field]) => {
         if (field.type === "text") {
           const value = formData[key] as string;
@@ -296,9 +326,15 @@ const CustomizePage = () => {
         } else if (field.type === "image" || field.type === "video") {
           if (uploadedAssets[key]) {
             renderDto[key] = uploadedAssets[key];
+            console.log(`✅ Adding ${key} to renderDto:`, uploadedAssets[key]);
+          } else {
+            console.log(`⚠️ No uploaded asset for ${key}`);
           }
         }
       });
+
+      // Debug: Log final renderDto
+      console.log("🚀 Final renderDto being sent:", renderDto);
 
       const { data } = await api.post(
         `/render/create-job/${templateId}`,
@@ -329,18 +365,18 @@ const CustomizePage = () => {
     try {
       const xhr = new XMLHttpRequest();
 
-      xhr.addEventListener('progress', (e) => {
+      xhr.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
           setDownloadProgress(percentComplete);
         }
       });
 
-      xhr.addEventListener('load', () => {
+      xhr.addEventListener("load", () => {
         if (xhr.status === 200) {
-          const blob = new Blob([xhr.response], { type: 'video/mp4' });
+          const blob = new Blob([xhr.response], { type: "video/mp4" });
           const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = url;
           const timestamp = new Date().toISOString().slice(0, 10);
           link.download = `video-${timestamp}.mp4`;
@@ -348,28 +384,28 @@ const CustomizePage = () => {
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
-          showInfoToast('Video downloaded successfully!');
+          showInfoToast("Video downloaded successfully!");
         } else {
-          showErrorToast('Failed to download video');
+          showErrorToast("Failed to download video");
         }
       });
 
-      xhr.addEventListener('error', () => {
-        console.error('Download failed:', xhr.status);
-        showErrorToast('Download failed. Please try again.');
+      xhr.addEventListener("error", () => {
+        console.error("Download failed:", xhr.status);
+        showErrorToast("Download failed. Please try again.");
       });
 
-      xhr.addEventListener('abort', () => {
-        showErrorToast('Download cancelled');
+      xhr.addEventListener("abort", () => {
+        showErrorToast("Download cancelled");
       });
 
-      xhr.open('GET', renderJob.outputUrl);
-      xhr.responseType = 'arraybuffer';
+      xhr.open("GET", renderJob.outputUrl);
+      xhr.responseType = "arraybuffer";
       // Don't include credentials for public Cloudinary URLs (CORS friendly)
       xhr.send();
     } catch (error) {
-      console.error('Failed to download video:', error);
-      showErrorToast('Failed to download video');
+      console.error("Failed to download video:", error);
+      showErrorToast("Failed to download video");
     } finally {
       setTimeout(() => {
         setIsDownloading(false);
@@ -383,7 +419,8 @@ const CustomizePage = () => {
   }
 
   // Check if we should show rendered video or template preview
-  const showRenderedVideo = renderJob?.status === "COMPLETED" && renderJob.outputUrl;
+  const showRenderedVideo =
+    renderJob?.status === "COMPLETED" && renderJob.outputUrl;
 
   return (
     <div className="min-h-screen bg-background">
@@ -675,7 +712,41 @@ const CustomizePage = () => {
                     </>
                   )}
                 </button>
-
+                <button
+                  onClick={handleGeneratePreview}
+                  disabled={
+                    isGenerating ||
+                    authLoading ||
+                    !hasRequiredFields() ||
+                    uploadingAssets.size > 0 ||
+                    renderJob?.status === "PENDING" ||
+                    renderJob?.status === "PROCESSING"
+                  }
+                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {uploadingAssets.size > 0 ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading {uploadingAssets.size} file
+                      {uploadingAssets.size > 1 ? "s" : ""}...
+                    </>
+                  ) : isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Submitting Job...
+                    </>
+                  ) : isLoggedIn ? (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Render Video
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Login to Render
+                    </>
+                  )}
+                </button>
                 {isDownloading && downloadProgress > 0 && (
                   <div className="space-y-1">
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
@@ -699,12 +770,19 @@ const CustomizePage = () => {
                   isUploading ||
                   authLoading ||
                   !hasRequiredFields() ||
+                  uploadingAssets.size > 0 ||
                   renderJob?.status === "PENDING" ||
                   renderJob?.status === "PROCESSING"
                 }
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {isGenerating ? (
+                {uploadingAssets.size > 0 ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading {uploadingAssets.size} file
+                    {uploadingAssets.size > 1 ? "s" : ""}...
+                  </>
+                ) : isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Submitting Job...
@@ -764,17 +842,22 @@ const CustomizePage = () => {
                       )}
 
                       {/* Fallback if image fails or no thumbnail */}
-                      {(imageError || !template.thumbnail) && !isVideoPlaying && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                          <p className="text-sm text-muted-foreground">No preview</p>
-                        </div>
-                      )}
+                      {(imageError || !template.thumbnail) &&
+                        !isVideoPlaying && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                            <p className="text-sm text-muted-foreground">
+                              No preview
+                            </p>
+                          </div>
+                        )}
 
                       {/* Video (lazy loaded on first click) */}
                       <video
                         ref={videoRef}
                         className={`w-full h-full object-cover transition-opacity duration-300 ${
-                          isVideoPlaying && isVideoLoaded ? "opacity-100" : "opacity-0"
+                          isVideoPlaying && isVideoLoaded
+                            ? "opacity-100"
+                            : "opacity-0"
                         }`}
                         onLoadedData={handleVideoLoaded}
                         onError={handleVideoError}
@@ -782,7 +865,7 @@ const CustomizePage = () => {
                       />
 
                       {/* Play/Pause Overlay */}
-                      <div 
+                      <div
                         className="absolute inset-0 cursor-pointer"
                         onClick={handleVideoClick}
                       >
