@@ -49,7 +49,6 @@ const CustomizePage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
   const [formData, setFormData] = useState<FormDataState>({});
-  const [imageDimensions, setImageDimensions] = useState<{ [key: string]: { width: number; height: number } }>({});
   const [filePreviews, setFilePreviews] = useState<{ [key: string]: string }>(
     {}
   );
@@ -212,120 +211,33 @@ const CustomizePage = () => {
     setFormData((prev) => ({ ...prev, [fieldKey]: value }));
   };
 
-  // Resize image to match required dimensions
-  const resizeImage = (
+  // Validate image dimensions match the required dimensions
+  const validateImageDimensions = (
     file: File,
     requiredWidth: number,
     requiredHeight: number
-  ): Promise<{ file: File; verifiedDimensions: { width: number; height: number } | null }> => {
+  ): Promise<boolean> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new window.Image();
         img.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = requiredWidth;
-          canvas.height = requiredHeight;
-
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            console.warn("Canvas context unavailable, using original image");
-            return resolve({ file, verifiedDimensions: null });
-          }
-
-          // Log original dimensions
-          console.log(`Original image dimensions: ${img.width}x${img.height}`);
-          console.log(`Target dimensions: ${requiredWidth}x${requiredHeight}`);
-
-          // Calculate dimensions to fill canvas while maintaining aspect ratio
-          const imgAspect = img.width / img.height;
-          const canvasAspect = requiredWidth / requiredHeight;
-
-          let drawWidth = requiredWidth;
-          let drawHeight = requiredHeight;
-          let drawX = 0;
-          let drawY = 0;
-
-          if (imgAspect > canvasAspect) {
-            // Image is wider - scale by height
-            drawWidth = img.height * canvasAspect;
-            drawX = (img.width - drawWidth) / 2;
-          } else {
-            // Image is taller - scale by width
-            drawHeight = img.width / canvasAspect;
-            drawY = (img.height - drawHeight) / 2;
-          }
-
-          ctx.drawImage(
-            img,
-            drawX,
-            drawY,
-            drawWidth,
-            drawHeight,
-            0,
-            0,
-            requiredWidth,
-            requiredHeight
+          const isValid =
+            img.width === requiredWidth && img.height === requiredHeight;
+          console.log(
+            `Image validation: ${img.width}x${img.height} vs required ${requiredWidth}x${requiredHeight} - ${isValid ? "✓ PASS" : "✗ FAIL"}`
           );
-
-          canvas.toBlob(
-            (blob) => {
-              const resizedFile = new File(
-                [blob!],
-                file.name,
-                { type: "image/jpeg" }
-              );
-
-              // Verify dimensions by loading the resized image
-              const verifyImg = new window.Image();
-              verifyImg.onload = () => {
-                console.log(
-                  `✓ Resized image verified: ${verifyImg.width}x${verifyImg.height}`
-                );
-                if (
-                  verifyImg.width === requiredWidth &&
-                  verifyImg.height === requiredHeight
-                ) {
-                  console.log("✓ Dimensions match perfectly!");
-                  resolve({
-                    file: resizedFile,
-                    verifiedDimensions: {
-                      width: verifyImg.width,
-                      height: verifyImg.height,
-                    },
-                  });
-                } else {
-                  console.warn(
-                    `⚠ Dimension mismatch: expected ${requiredWidth}x${requiredHeight}, got ${verifyImg.width}x${verifyImg.height}`
-                  );
-                  resolve({
-                    file: resizedFile,
-                    verifiedDimensions: {
-                      width: verifyImg.width,
-                      height: verifyImg.height,
-                    },
-                  });
-                }
-              };
-              verifyImg.onerror = () => {
-                console.error("Failed to verify resized image");
-                resolve({ file: resizedFile, verifiedDimensions: null });
-              };
-              verifyImg.src = URL.createObjectURL(blob!);
-            },
-            "image/jpeg",
-            0.9
-          );
+          resolve(isValid);
         };
         img.onerror = () => {
-          console.error("Failed to load original image");
-          resolve({ file, verifiedDimensions: null });
+          console.error("Failed to load image for validation");
+          resolve(false);
         };
         img.src = event.target?.result as string;
       };
       reader.onerror = () => {
         console.error("FileReader error");
-        resolve({ file, verifiedDimensions: null });
+        resolve(false);
       };
       reader.readAsDataURL(file);
     });
@@ -333,9 +245,6 @@ const CustomizePage = () => {
 
   const handleFileUpload = async (fieldKey: string, file: File | null) => {
     if (!file) return;
-
-    let processedFile = file;
-    let verifiedDimensions: { width: number; height: number } | null = null;
 
     if (file.type.startsWith("image/")) {
       // Get the field to check if it has required dimensions
@@ -348,30 +257,17 @@ const CustomizePage = () => {
 
         if (width && height) {
           try {
-            const result = await resizeImage(file, width, height);
-            processedFile = result.file;
-            verifiedDimensions = result.verifiedDimensions;
-
-            if (verifiedDimensions) {
-              const isCorrect =
-                verifiedDimensions.width === width &&
-                verifiedDimensions.height === height;
-
-              if (isCorrect) {
-                showSuccessToast(
-                  `✓ Image resized to ${field.dimensions}`
-                );
-              } else {
-                showErrorToast(
-                  `⚠ Resize issue: expected ${field.dimensions}, got ${verifiedDimensions.width}x${verifiedDimensions.height}`
-                );
-              }
-            } else {
-              showInfoToast(`Image resized to ${field.dimensions}`);
+            const isValid = await validateImageDimensions(file, width, height);
+            if (!isValid) {
+              showErrorToast(
+                `❌ Invalid dimensions! Required: ${field.dimensions}`
+              );
+              return; // Stop upload if dimensions don't match
             }
           } catch (error) {
-            console.error("Image resize failed, using original", error);
-            showErrorToast("Could not resize image, using original");
+            console.error("Image validation failed", error);
+            showErrorToast("Failed to validate image");
+            return;
           }
         }
       }
@@ -383,22 +279,14 @@ const CustomizePage = () => {
           [fieldKey]: reader.result as string,
         }));
       };
-      reader.readAsDataURL(processedFile);
-
-      // Store verified dimensions for display
-      if (verifiedDimensions) {
-        setImageDimensions((prev) => ({
-          ...prev,
-          [fieldKey]: verifiedDimensions as { width: number; height: number },
-        }));
-      }
+      reader.readAsDataURL(file);
     } else if (file.type.startsWith("video/")) {
       const videoUrl = URL.createObjectURL(file);
       setFilePreviews((prev) => ({ ...prev, [fieldKey]: videoUrl }));
     }
 
-    setFormData((prev) => ({ ...prev, [fieldKey]: processedFile }));
-    await uploadSingleAsset(fieldKey, processedFile);
+    setFormData((prev) => ({ ...prev, [fieldKey]: file }));
+    await uploadSingleAsset(fieldKey, file);
   };
 
   const uploadSingleAsset = async (fieldKey: string, file: File) => {
@@ -696,11 +584,6 @@ const CustomizePage = () => {
                             >
                               Click to change image
                             </label>
-                            {imageDimensions[fieldKey] && (
-                              <div className="text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-1 rounded">
-                                ✓ {(imageDimensions[fieldKey] as { width: number; height: number }).width}x{(imageDimensions[fieldKey] as { width: number; height: number }).height}
-                              </div>
-                            )}
                           </div>
                         </div>
                       ) : (
